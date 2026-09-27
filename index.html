@@ -34,9 +34,13 @@
     padding: 28px 30px 40px;
   }
 
-  .wrap { max-width: 1040px; margin: 0 auto; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
 
-  header { border-bottom: 1px solid var(--sand); padding-bottom: 14px; }
+  header {
+    border-bottom: 1px solid var(--sand);
+    padding-bottom: 14px;
+    text-align: center;
+  }
   h1 {
     font-family: "Playfair Display", "Songti SC", serif;
     font-size: 26px;
@@ -44,25 +48,21 @@
   }
   .sub { margin-top: 5px; font-size: 14px; color: var(--body); }
 
-  .main {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 330px;
-    gap: 28px;
-    margin-top: 24px;
-    align-items: start;
-  }
+  .main { margin-top: 28px; }
 
   /* ---- 马 ---- */
 
   .board {
     background: #d5dad3;
     border: 1px solid var(--sand);
-    padding: 20px;
+    padding: 20px 16px 16px;
+    max-width: 620px;
+    margin: 0 auto;
   }
   .stage {
     position: relative;
     width: 100%;
-    max-width: 370px;
+    max-width: 520px;
     margin: 0 auto;
     aspect-ratio: 649 / 916;
     touch-action: manipulation;
@@ -115,7 +115,7 @@
   }
 
   .board-foot {
-    max-width: 370px;
+    max-width: 520px;
     margin: 12px auto 0;
     padding-top: 8px;
     border-top: 1px solid var(--sand);
@@ -125,20 +125,18 @@
     color: var(--sage);
   }
 
-  /* ---- 侧栏 ---- */
+  /* ---- 下面的拼块 ---- */
 
-  .side > section + section { margin-top: 22px; }
-  h2 {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: .1em;
-    color: var(--sage);
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--sand);
+  .tray { margin-top: 26px; text-align: center; }
+  .tip { font-size: 13px; color: var(--body); }
+
+  .versions {
+    margin: 12px auto 0;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    max-width: 360px;
   }
-  .tip { margin-top: 8px; font-size: 13px; color: var(--body); }
-
-  .versions { margin-top: 10px; display: flex; gap: 10px; }
   .vbtn {
     flex: 1;
     display: flex;
@@ -173,11 +171,23 @@
   body.dragging { cursor: grabbing; user-select: none; -webkit-user-select: none; }
   body.dragging .vbtn { cursor: grabbing; }
 
-  .slots { margin-top: 10px; width: 100%; border-collapse: collapse; }
-  .slots tr { border-bottom: 1px solid rgba(201,205,198,.7); }
-  .slots td { padding: 7px 0; vertical-align: baseline; }
-  .s-no   { width: 22px; font-size: 13px; font-weight: 600; color: var(--ink); }
-  .s-desc { font-size: 13px; color: var(--ink); }
+  .pieces {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .piece {
+    background: var(--card);
+    border: 1px solid var(--line);
+    padding: 12px 12px 14px;
+  }
+  .piece[data-fill="yuandian"] { box-shadow: inset 0 3px 0 var(--v-yuandian); }
+  .piece[data-fill="nuolan"]   { box-shadow: inset 0 3px 0 var(--v-nuolan); }
+  .p-no { font-size: 15px; font-weight: 600; }
+  .p-desc { margin-top: 6px; font-size: 13px; line-height: 1.45; }
+  .p-val { margin-top: 10px; font-size: 12.5px; color: var(--sage); }
+  .piece[data-filled="yes"] .p-val { color: var(--ink); }
 
   .marks { position: absolute; inset: 0; pointer-events: none; }
   .mark {
@@ -207,12 +217,13 @@
   .s-x:hover { color: var(--ink); }
 
   .fixed {
-    margin-top: 10px;
+    margin-top: 14px;
+    text-align: center;
     font-size: 12.5px;
     color: var(--sage);
   }
 
-  .tools { margin-top: 16px; display: flex; gap: 10px; align-items: center; }
+  .tools { margin-top: 14px; display: flex; gap: 10px; align-items: center; justify-content: center; }
   .btn {
     padding: 8px 14px;
     font: inherit;
@@ -236,8 +247,8 @@
 
   @media (max-width: 860px) {
     body { padding: 20px 16px 32px; }
-    .main { grid-template-columns: minmax(0, 1fr); }
-    .stage { max-width: 300px; }
+    .stage, .board-foot { max-width: 300px; }
+    .pieces { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 </style>
 </head>
@@ -259,22 +270,16 @@
       </div>
     </div>
 
-    <div class="side">
-      <section>
-        <h2>版本</h2>
-        <p class="tip">把色块拖到马身上。也可以先点一个版本，再点槽位。</p>
-        <div class="versions" id="versions"></div>
-      </section>
+    <div class="tray">
+      <p class="tip">把色块拖到马上的数字上。也可以先点一个版本，再点那一块。</p>
+      <div class="versions" id="versions"></div>
+    </div>
 
-      <section>
-        <h2>槽位</h2>
-        <table class="slots"><tbody id="slots"></tbody></table>
-        <p class="fixed">7 · 8 · 9　仅结构</p>
-        <div class="tools">
-          <button type="button" class="btn" id="clear">清空</button>
-          <span class="count" id="count">已放 0 个</span>
-        </div>
-      </section>
+    <div class="pieces" id="slots"></div>
+    <p class="fixed">7 · 8 · 9　仅结构</p>
+    <div class="tools">
+      <button type="button" class="btn" id="clear">清空</button>
+      <span class="count" id="count">已放 0 个</span>
     </div>
   </div>
 
@@ -294,9 +299,9 @@ const VERSIONS = [
 const SLOTS = [
   { i: 1, desc: "人物形象和性格（主角、重要配角）" },
   { i: 2, desc: "艺术表达风格与作品整体氛围" },
-  { i: 3, desc: "作品的中心思想与主旨" },
-  { i: 4, desc: "最终的结局 / 结果" },
-  { i: 5, desc: "最主要的冲突与高光情节" },
+  { i: 3, desc: "主要冲突与高光情节" },
+  { i: 4, desc: "中心思想与主旨" },
+  { i: 5, desc: "最终的结局 / 结果" },
   { i: 6, desc: "作品表现形式（电影、文字、书籍、音乐剧等）" }
 ];
 const MARKS = [
@@ -308,7 +313,7 @@ const MARKS = [
   { i: 6, x: 34.8, y: 53.3 },
   { i: 7, x: 79.1, y: 57.5 },
   { i: 8, x: 23.6, y: 74.8 },
-  { i: 9, x: 4.8,  y: 73.0 }
+  { i: 9, x: 8.2,  y: 73.0 }
 ];
 const STRUCTURE = [7, 8, 9];
 
@@ -401,15 +406,17 @@ function buildSlots() {
   slotsEl.innerHTML = "";
   SLOTS.forEach(s => {
     const v = filled[s.i];
-    const tr = document.createElement("tr");
-    tr.dataset.filled = v ? "yes" : "no";
-    tr.innerHTML =
-      `<td class="s-no">${s.i}</td>` +
-      `<td class="s-desc">${s.desc}</td>` +
-      `<td class="s-val">${v ? nameOf(v) : "—"}` +
+    const el = document.createElement("article");
+    el.className = "piece";
+    el.dataset.filled = v ? "yes" : "no";
+    if (v) el.dataset.fill = v;
+    el.innerHTML =
+      `<div class="p-no">${s.i}</div>` +
+      `<p class="p-desc">${s.desc}</p>` +
+      `<p class="p-val">${v ? nameOf(v) : "—"}` +
       (v ? `<button class="s-x" type="button" data-x="${s.i}" aria-label="移除">×</button>` : "") +
-      `</td>`;
-    slotsEl.appendChild(tr);
+      `</p>`;
+    slotsEl.appendChild(el);
   });
 }
 
