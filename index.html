@@ -176,9 +176,28 @@
   .slots { margin-top: 10px; width: 100%; border-collapse: collapse; }
   .slots tr { border-bottom: 1px solid rgba(201,205,198,.7); }
   .slots td { padding: 7px 0; vertical-align: baseline; }
-  .s-no   { width: 20px; font-size: 12px; color: var(--sage); }
-  .s-name { width: 54px; font-size: 13.5px; font-weight: 600; }
-  .s-desc { font-size: 12.5px; color: var(--body); }
+  .s-no   { width: 22px; font-size: 13px; font-weight: 600; color: var(--ink); }
+  .s-desc { font-size: 13px; color: var(--ink); }
+
+  .marks { position: absolute; inset: 0; pointer-events: none; }
+  .mark {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: rgba(243,244,241,.92);
+    border: 1px solid rgba(47,52,50,.35);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 20px;
+    text-align: center;
+  }
+  .mark[data-role="structure"] {
+    background: rgba(243,244,241,.55);
+    color: var(--body);
+    font-weight: 500;
+  }
   .s-val  { text-align: right; font-size: 12.5px; color: var(--sage); white-space: nowrap; }
   .slots tr[data-filled="yes"] .s-val { color: var(--ink); }
   .s-x {
@@ -250,7 +269,7 @@
       <section>
         <h2>槽位</h2>
         <table class="slots"><tbody id="slots"></tbody></table>
-        <p class="fixed">7 · 8 · 9　前腿 · 后腿 · 尾巴　仅结构</p>
+        <p class="fixed">7 · 8 · 9　仅结构</p>
         <div class="tools">
           <button type="button" class="btn" id="clear">清空</button>
           <span class="count" id="count">已放 0 个</span>
@@ -273,12 +292,23 @@ const VERSIONS = [
 ];
 
 const SLOTS = [
-  { i: 1, name: "马头", desc: "人物形象" },
-  { i: 2, name: "鬃毛", desc: "该版本的视觉风格" },
-  { i: 3, name: "脖子", desc: "旅程如何被讲述" },
-  { i: 4, name: "衔接", desc: "壳与意义如何相接" },
-  { i: 5, name: "马身", desc: "主旨" },
-  { i: 6, name: "盾",   desc: "被当作「礼物」展示的内容" }
+  { i: 1, desc: "人物形象和性格（主角、重要配角）" },
+  { i: 2, desc: "艺术表达风格与作品整体氛围" },
+  { i: 3, desc: "作品的中心思想与主旨" },
+  { i: 4, desc: "最终的结局 / 结果" },
+  { i: 5, desc: "最主要的冲突与高光情节" },
+  { i: 6, desc: "作品表现形式（电影、文字、书籍、音乐剧等）" }
+];
+const MARKS = [
+  { i: 1, x: 57.6, y: 23.8 },
+  { i: 2, x: 51.0, y: 16.0 },
+  { i: 3, x: 55.5, y: 40.8 },
+  { i: 4, x: 54.6, y: 54.1 },
+  { i: 5, x: 16.6, y: 51.3 },
+  { i: 6, x: 34.8, y: 53.3 },
+  { i: 7, x: 79.1, y: 57.5 },
+  { i: 8, x: 23.6, y: 74.8 },
+  { i: 9, x: 4.8,  y: 73.0 }
 ];
 const STRUCTURE = [7, 8, 9];
 
@@ -339,6 +369,19 @@ function buildStage() {
   const seams = document.createElement("div");
   seams.className = "seams";
   stage.appendChild(seams);
+
+  const layer = document.createElement("div");
+  layer.className = "marks";
+  MARKS.forEach(m => {
+    const s = document.createElement("span");
+    s.className = "mark";
+    if (STRUCTURE.includes(m.i)) s.dataset.role = "structure";
+    s.style.left = m.x + "%";
+    s.style.top = m.y + "%";
+    s.textContent = m.i;
+    layer.appendChild(s);
+  });
+  stage.appendChild(layer);
 }
 
 function buildVersions() {
@@ -362,7 +405,6 @@ function buildSlots() {
     tr.dataset.filled = v ? "yes" : "no";
     tr.innerHTML =
       `<td class="s-no">${s.i}</td>` +
-      `<td class="s-name">${s.name}</td>` +
       `<td class="s-desc">${s.desc}</td>` +
       `<td class="s-val">${v ? nameOf(v) : "—"}` +
       (v ? `<button class="s-x" type="button" data-x="${s.i}" aria-label="移除">×</button>` : "") +
