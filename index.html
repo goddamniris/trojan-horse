@@ -3,70 +3,100 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>拖拽拼装特洛伊木马</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet" />
+<title></title>
 <style>
   :root {
-    --paper: #dde2dc;
-    --ink:   #2f3432;
-    --body:  #4c5550;
-    --sage:  #6f7b74;
-    --sand:  #c4c1b3;
-    --card:  #f3f4f1;
-    --line:  #c9cdc6;
-    --empty: #bfc6be;
-
-    /* 占位色，素材未定 */
-    --v-yuandian: #b9a888;
-    --v-nuolan:   #3e4744;
+    --v-yuandian: #e2a04a;
+    --v-nuolan:   #3c7f86;
+    --wall: #8d887e;
+    --wall-deep: #7a756c;
+    --desk: #6f675c;
+    --desk-rim: #524c44;
+    --board: #d2d8d0;
+    --board-inset: #bcc3b9;
+    --tray: #5a5349;
+    --tray-lip: #454036;
+    --inkline: #2a2826;
+    --lift: 0 16px 28px rgba(16, 12, 8, 0.42);
+    --ease-out: cubic-bezier(.22, .72, .18, 1);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  html { height: 100%; }
+
   body {
-    background: var(--paper);
-    color: var(--ink);
-    font-family: "Source Sans 3", "PingFang SC", sans-serif;
-    font-size: 15px;
-    line-height: 1.5;
-    padding: 28px 30px 40px;
+    min-height: 100%;
+    background:
+      radial-gradient(ellipse 120% 80% at 50% 0%, rgba(255, 252, 245, 0.06), transparent 55%),
+      linear-gradient(175deg, var(--wall) 0%, var(--wall-deep) 100%);
+    color: var(--inkline);
+    font-family: system-ui, "PingFang SC", "Helvetica Neue", sans-serif;
+    padding: clamp(12px, 3vw, 28px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .wrap { max-width: 1080px; margin: 0 auto; }
+  body.is-busy { cursor: wait; }
 
-  header {
-    border-bottom: 1px solid var(--sand);
-    padding-bottom: 14px;
-    text-align: center;
+  .wrap {
+    width: min(1180px, 100%);
+    padding: clamp(14px, 2.5vw, 22px);
+    background: linear-gradient(165deg, #7a7268 0%, var(--desk) 38%, #655e54 100%);
+    border: 1px solid var(--desk-rim);
+    border-radius: 4px;
+    box-shadow:
+      0 2px 0 rgba(255, 255, 255, 0.06) inset,
+      0 28px 48px rgba(22, 18, 14, 0.35),
+      0 1px 0 var(--inkline);
   }
-  h1 {
-    font-family: "Playfair Display", "Songti SC", serif;
-    font-size: 26px;
-    font-weight: 600;
+
+  .bench {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(14px, 2.5vw, 22px);
   }
-  .sub { margin-top: 5px; font-size: 14px; color: var(--body); }
 
-  .main { margin-top: 28px; }
-
-  /* ---- 马 ---- */
+  .horse-zone { display: flex; flex-direction: column; align-items: stretch; gap: 12px; min-width: 0; }
 
   .board {
-    background: #d5dad3;
-    border: 1px solid var(--sand);
-    padding: 20px 16px 16px;
-    max-width: 620px;
-    margin: 0 auto;
+    width: 100%;
+    padding: 14px 14px 12px;
+    background: linear-gradient(180deg, var(--board) 0%, #c8cec6 100%);
+    border: 1px solid var(--inkline);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.45) inset,
+      0 10px 24px rgba(30, 26, 22, 0.18),
+      inset 0 2px 8px rgba(60, 56, 50, 0.12);
+    transition: transform .28s var(--ease-out);
   }
+  .board.reject { animation: board-nudge .42s ease; }
+  @keyframes board-nudge {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+  }
+
   .stage {
     position: relative;
+    isolation: isolate;
     width: 100%;
-    max-width: 520px;
     margin: 0 auto;
     aspect-ratio: 649 / 916;
-    touch-action: manipulation;
+    touch-action: none;
+    border-radius: 2px;
+    outline: 2px solid transparent;
+    outline-offset: 4px;
+    transition: outline-color .2s ease, box-shadow .2s ease;
   }
+  .stage.target-ok {
+    outline-color: rgba(226, 160, 74, 0.55);
+    box-shadow: 0 0 0 1px rgba(42, 40, 38, 0.15);
+  }
+  .stage.target-no { outline-color: rgba(42, 40, 38, 0.2); }
+  .stage.can-lift { cursor: pointer; }
+
   .part {
     position: absolute;
     inset: 0;
@@ -76,33 +106,36 @@
             mask-repeat: no-repeat;
     -webkit-mask-size: 100% 100%;
             mask-size: 100% 100%;
-    transition: filter .18s ease;
+    transition: filter .2s ease, opacity .2s ease;
   }
-  .part[data-role="structure"]  { opacity: .8; }
-  .part.hover                   { filter: brightness(1.12); }
+  .part[data-role="structure"] { opacity: .88; }
+  .part.hover {
+    filter: brightness(1.12) saturate(1.05);
+    z-index: 2;
+  }
+  .part[data-state="filled"].hover {
+    filter: brightness(1.08);
+    outline: 1px dashed rgba(42, 40, 38, 0.35);
+    outline-offset: -2px;
+  }
+  .part.landed { animation: land 1.05s ease; }
+  @keyframes land {
+    0% { filter: brightness(1.45); }
+    100% { filter: none; }
+  }
 
   /* 空槽位就是这匹马本身，分块靠接缝看出来。 */
   .part[data-state="empty"] {
     background-color: transparent;
-    background-image: var(--art);
   }
 
-  /* 两个版本的占位色 + 质感 */
   .tex-yuandian {
     background-color: var(--v-yuandian);
-    background-image: repeating-linear-gradient(
-      90deg,
-      rgba(255,255,255,.22) 0 1px,
-      transparent 1px 5px
-    );
+    background-image: none;
   }
   .tex-nuolan {
     background-color: var(--v-nuolan);
-    background-image: repeating-linear-gradient(
-      0deg,
-      rgba(255,255,255,.10) 0 1px,
-      transparent 1px 4px
-    );
+    background-image: none;
   }
 
   .seams {
@@ -111,199 +144,243 @@
     pointer-events: none;
     background: url("assets/masks/seams.png") no-repeat;
     background-size: 100% 100%;
-    opacity: .4;
+    opacity: .45;
+    mix-blend-mode: multiply;
   }
 
-  .board-foot {
-    max-width: 520px;
-    margin: 12px auto 0;
-    padding-top: 8px;
-    border-top: 1px solid var(--sand);
+  .sequence {
     display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: var(--sage);
+    gap: 6px;
+    width: 100%;
+    padding: 0 4px;
   }
-
-  /* ---- 下面的拼块 ---- */
-
-  .tray { margin-top: 26px; text-align: center; }
-  .tip { font-size: 13px; color: var(--body); }
-
-  .versions {
-    margin: 12px auto 0;
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    max-width: 360px;
-  }
-  .vbtn {
+  .seq-cell {
     flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 10px 12px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    font: inherit;
-    color: inherit;
-    cursor: grab;
-    text-align: left;
-    touch-action: none;
+    height: 5px;
+    border-radius: 1px;
+    background: rgba(42, 40, 38, 0.22);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset;
+    opacity: 0.35;
+    transform: scaleY(0.85);
+    transition: opacity .25s ease, transform .25s var(--ease-out), background-color .25s ease;
   }
-  .vbtn:hover { border-color: var(--sage); }
-  .vbtn:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
-  .vbtn[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-  .vdot {
-    width: 20px; height: 20px; flex: 0 0 20px;
-    border: 1px solid rgba(47,52,50,.3);
+  .seq-cell.on {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  .seq-cell.yuandian.on { background: var(--v-yuandian); }
+  .seq-cell.nuolan.on { background: var(--v-nuolan); }
+
+  .veil {
+    position: fixed;
+    inset: 0;
+    z-index: 16;
+    background: rgba(62, 58, 52, 0);
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .6s ease, background .6s ease, backdrop-filter .6s ease, -webkit-backdrop-filter .6s ease;
+  }
+  .veil.on {
+    opacity: 1;
+    pointer-events: auto;
+    background: rgba(62, 58, 52, 0.28);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
 
-  .ghost {
+  .scroll {
     position: fixed;
-    z-index: 50;
-    width: 36px; height: 36px;
-    margin: -18px 0 0 -18px;
+    left: 50%;
+    top: 50%;
+    z-index: 20;
+    width: min(1080px, 92vw);
+    transform: translate(-50%, -50%);
     pointer-events: none;
-    border: 1px solid rgba(47,52,50,.4);
-    box-shadow: 0 3px 10px rgba(47,52,50,.3);
+  }
+  .scroll:empty { display: none; }
+  .scroll-piece { position: relative; height: min(460px, 56vh); }
+  .sheet {
+    height: 100%;
+    overflow: hidden;
+    background: #f4ead8;
+    box-shadow: 0 24px 50px rgba(20, 10, 4, 0.4);
+    animation: unfurl 2.6s cubic-bezier(.22, .7, .2, 1) both;
+  }
+  .sheet img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 62%;
+    display: block;
+  }
+  .roll {
+    position: absolute;
+    top: -10px;
+    bottom: -10px;
+    width: 18px;
+    border-radius: 9px;
+    z-index: 2;
+    background: linear-gradient(90deg, #4a2e1c, #e6d2a8 40%, #8a6238 50%, #e6d2a8 60%, #4a2e1c);
+    box-shadow: 0 8px 16px rgba(20, 10, 4, 0.35);
+  }
+  .roll-l { left: 0; }
+  .roll-r { left: 0; animation: roll-r 2.6s cubic-bezier(.22, .7, .2, 1) both; }
+  .shut {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    z-index: 3;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(42, 40, 38, 0.5);
+    background: #f0e6d4;
+    color: var(--inkline);
+    font: 24px/1 Georgia, "Songti SC", serif;
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: 0 4px 14px rgba(20, 10, 4, 0.28);
+    transition: transform .15s ease, background .15s ease;
+  }
+  .shut:hover { background: #fff8ec; transform: scale(1.06); }
+  .shut:active { transform: scale(0.96); }
+  .shut[hidden] { display: none; }
+  .shut:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  .scroll.dissolve img { opacity: 0.4; }
+  .scroll.broken img { opacity: 0.22; }
+  .scroll.noise .sheet { position: relative; }
+  .scroll.noise img { opacity: 0.1; }
+  .scroll.noise .sheet::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(90deg, #1a1612 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(#1a1612 0 1px, transparent 1px 4px);
+    opacity: 0.45;
+  }
+  @keyframes unfurl { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes roll-r { from { left: 0; } to { left: calc(100% - 18px); } }
+  @media (prefers-reduced-motion: reduce) {
+    .sheet, .roll-r, .part.landed, .veil { animation: none; transition: none; }
+  }
+
+  /* 拼块的 z-index 会一直累加，只让它在托盘内部比较，不越过卷轴。 */
+  .tray {
+    isolation: isolate;
+    padding: 14px 12px;
+    background: linear-gradient(180deg, var(--tray-lip) 0%, var(--tray) 12%, #504940 100%);
+    border: 1px solid var(--inkline);
+    box-shadow:
+      inset 0 3px 12px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+  }
+  .pile {
+    position: relative;
+    flex: 1 1 auto;
+    width: 100%;
+    height: clamp(360px, 58vh, 720px);
+    min-height: 360px;
+  }
+  .shard {
+    position: absolute;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: grab;
+    touch-action: none;
+    -webkit-appearance: none;
+    appearance: none;
+    overflow: visible;
+    background: transparent;
+    filter:
+      drop-shadow(0 2px 0 rgba(28, 22, 16, 0.9))
+      drop-shadow(0 6px 7px rgba(10, 8, 6, 0.45));
+    transform-origin: 50% 50%;
+    transition: filter .18s ease;
+  }
+  .shard.held, .shard.dragging {
+    filter:
+      drop-shadow(0 3px 0 rgba(28, 22, 16, 0.9))
+      drop-shadow(0 18px 18px rgba(10, 8, 6, 0.5));
+  }
+  .shard-surface {
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .shard:focus-visible { outline: 2px solid rgba(243, 234, 216, 0.9); outline-offset: 3px; }
+  .shard.held { cursor: grab; }
+  .shard.dragging {
+    cursor: grabbing;
+    will-change: transform;
   }
   body.dragging { cursor: grabbing; user-select: none; -webkit-user-select: none; }
-  body.dragging .vbtn { cursor: grabbing; }
 
-  .pieces {
-    margin-top: 18px;
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 12px;
+  @media (max-width: 520px) {
+    .board { width: 100%; }
+    .sequence { gap: 4px; }
+    .pile { height: clamp(200px, 38vh, 280px); }
   }
-  .piece {
-    background: var(--card);
-    border: 1px solid var(--line);
-    padding: 12px 12px 14px;
-  }
-  .piece[data-fill="yuandian"] { box-shadow: inset 0 3px 0 var(--v-yuandian); }
-  .piece[data-fill="nuolan"]   { box-shadow: inset 0 3px 0 var(--v-nuolan); }
-  .p-no { font-size: 15px; font-weight: 600; }
-  .p-desc { margin-top: 6px; font-size: 13px; line-height: 1.45; }
-  .p-val { margin-top: 10px; font-size: 12.5px; color: var(--sage); }
-  .piece[data-filled="yes"] .p-val { color: var(--ink); }
-
-  .marks { position: absolute; inset: 0; pointer-events: none; }
-  .mark {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    width: 22px; height: 22px;
-    border-radius: 50%;
-    background: rgba(243,244,241,.92);
-    border: 1px solid rgba(47,52,50,.35);
-    color: var(--ink);
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 20px;
-    text-align: center;
-  }
-  .mark[data-role="structure"] {
-    background: rgba(243,244,241,.55);
-    color: var(--body);
-    font-weight: 500;
-  }
-  .s-val  { text-align: right; font-size: 12.5px; color: var(--sage); white-space: nowrap; }
-  .slots tr[data-filled="yes"] .s-val { color: var(--ink); }
-  .s-x {
-    border: 0; background: none; cursor: pointer;
-    font-size: 13px; color: var(--sage); padding: 0 0 0 6px;
-  }
-  .s-x:hover { color: var(--ink); }
-
-  .fixed {
-    margin-top: 14px;
-    text-align: center;
-    font-size: 12.5px;
-    color: var(--sage);
-  }
-
-  .tools { margin-top: 14px; display: flex; gap: 10px; align-items: center; justify-content: center; }
-  .btn {
-    padding: 8px 14px;
-    font: inherit;
-    font-size: 13px;
-    background: none;
-    border: 1px solid var(--sage);
-    color: var(--ink);
-    cursor: pointer;
-  }
-  .btn:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-  .btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
-  .count { font-size: 12.5px; color: var(--sage); }
-
-  .note {
-    margin-top: 26px;
-    padding-top: 12px;
-    border-top: 1px solid var(--sand);
-    font-size: 12px;
-    color: var(--sage);
-  }
-
-  @media (max-width: 860px) {
-    body { padding: 20px 16px 32px; }
-    .stage, .board-foot { max-width: 300px; }
-    .pieces { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 780px) {
+    .bench {
+      flex-direction: row;
+      align-items: stretch;
+      gap: 16px;
+    }
+    .horse-zone { flex: 2.2 1 0; }
+    .tray {
+      flex: 1 1 0;
+      max-width: 34%;
+      min-width: 220px;
+      display: flex;
+      flex-direction: column;
+    }
+    .pile { height: clamp(420px, 72vh, 820px); min-height: 420px; }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
-
-  <header>
-    <h1>拖拽拼装特洛伊木马</h1>
-    <p class="sub">网页交互 · 把不同版本的样式混进同一匹马</p>
-  </header>
-
-  <div class="main">
-
-    <div class="board">
-      <div class="stage" id="stage"></div>
-      <div class="board-foot">
-        <span>8 块 · 6 个槽位</span>
-        <span id="progress">0 / 6</span>
+  <div class="bench">
+    <div class="horse-zone">
+      <div class="board" id="board">
+        <div class="stage" id="stage" tabindex="0" role="application" aria-label="木马拼图"></div>
       </div>
+      <div class="sequence" id="sequence" aria-hidden="true"></div>
     </div>
-
     <div class="tray">
-      <p class="tip">把色块拖到马上的数字上。也可以先点一个版本，再点那一块。</p>
-      <div class="versions" id="versions"></div>
-    </div>
-
-    <div class="pieces" id="slots"></div>
-    <p class="fixed">7 · 8　仅结构</p>
-    <div class="tools">
-      <button type="button" class="btn" id="clear">清空</button>
-      <span class="count" id="count">已放 0 个</span>
+      <div class="pile" id="pile"></div>
     </div>
   </div>
-
-  <p class="note">颜色为占位，素材未定。</p>
-
 </div>
+<div class="veil" id="veil"></div>
+<div class="scroll" id="finds"></div>
 
 <script>
 const NATURAL = { w: 649, h: 916 };
-const REGIONMAP_SRC = "data:image/png;base64,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";
+const ASSET_V = "?v=9";
+const REGIONMAP_SRC = "assets/masks/regionmap.png" + ASSET_V;
 
-const VERSIONS = [
-  { key: "yuandian", name: "原典" },
-  { key: "nuolan",   name: "诺兰" }
+const BEATS = [
+  { yuandian: "木马进城，夜色里潜入，胜利以荣耀收束。", nuolan: "进城之后是残酷的战斗，奥德修斯颓废。", file: { yuandian: "情节1_特洛伊_原典_v2.jpg", nuolan: "情节1_特洛伊_改编_v1.jpg" } },
+  { yuandian: "十二船，伊斯罗斯，九天风暴，食莲，独眼与 Nobody。", nuolan: "沉重的十二船。中间剥落。独眼夺食，逃脱，惹怒。", file: { yuandian: "情节2_回程1_原典_v2.jpg", nuolan: "情节2_回程1_改编_v4.jpg" } },
+  { yuandian: "风袋把船打回去。巨人砸船，只剩一艘。喀耳刻救回被变成猪的人。", nuolan: "剥落。钢铁巨人砸船。变猪，谈判，再变回来。", file: { yuandian: "情节3_回程2_原典_v2.jpg", nuolan: "情节3_回程2_改编_v3.jpg" } },
+  { yuandian: "冥界先知。塞壬与蜂蜡。斯库拉吞下六人。", nuolan: "冥界里阿伽门农的亡魂，残酷真相，然后是赎罪的决心。塞壬与斯库拉仍在。", file: { yuandian: "情节4_回程3_原典_v2.jpg", nuolan: "情节4_回程3_改编_v2.jpg" } },
+  { yuandian: "赫利俄斯的牛，漂流九天。卡吕普索的七年。费埃克斯人。睡梦中回到伊塔卡。", nuolan: "阿波罗的牛，宙斯发怒。忘忧莲七年。离岛，为救子再回。", file: { yuandian: "情节5_回程4_原典_v3.jpg", nuolan: "情节5_回程4_改编_v2.jpg" } },
+  { yuandian: "珀涅罗珀与子守住城邦。乞丐归来，杀死求婚者，团聚成为传奇。", nuolan: "儿子寻父。父子扮成乞丐同归，杀死求婚者。与妻子自我流放，赎罪。", file: { yuandian: "情节6_伊塔卡_原典_v2.jpg", nuolan: "情节6_伊塔卡_改编_v2.jpg" } }
+];
+const CLIPS = [
+  "polygon(4% 12%, 96% 0, 100% 82%, 8% 100%)",
+  "polygon(0 8%, 92% 0, 100% 70%, 88% 100%, 6% 90%)",
+  "polygon(8% 0, 100% 10%, 94% 100%, 0 86%)",
+  "polygon(0 18%, 80% 0, 100% 40%, 90% 100%, 10% 88%)"
 ];
 
-const SLOTS = [
-  { i: 1, desc: "人物形象和性格（主角、重要配角）" },
-  { i: 2, desc: "艺术表达风格与作品整体氛围" },
-  { i: 3, desc: "主要冲突与高光情节" },
-  { i: 4, desc: "中心思想与主旨" },
-  { i: 5, desc: "最终的结局 / 结果" },
-  { i: 6, desc: "作品表现形式（电影、文字、书籍、音乐剧等）" }
-];
 const MARKS = [
   { i: 1, x: 57.6, y: 23.8 },
   { i: 2, x: 51.0, y: 16.0 },
@@ -315,19 +392,134 @@ const MARKS = [
   { i: 7, x: 79.1, y: 57.5 },
   { i: 8, x: 23.6, y: 74.8 }
 ];
-const STRUCTURE = [7, 8];
+const STRUCTURE = [];
 
-const nameOf = k => (VERSIONS.find(v => v.key === k) || {}).name || "";
+const BOXES = {
+  1: { x: 206, y: 11, w: 356, h: 388 },
+  2: { x: 212, y: 103, w: 292, h: 296 },
+  3: { x: 48, y: 337, w: 416, h: 248 },
+  4: { x: 62, y: 397, w: 577, h: 508 },
+  5: { x: 150, y: 398, w: 154, h: 183 },
+  6: { x: 9, y: 389, w: 122, h: 515 }
+};
+const FIT = 112;
+const maskImgs = {};
+const pieceImgs = {};
+let bootDone = false;
+function pieceSrc(slot, key) {
+  return "assets/masks/piece_" + key + "_" + slot + ".png" + ASSET_V;
+}
+function frameSrc(slot) {
+  return "assets/masks/frame_" + slot + ".png" + ASSET_V;
+}
+function onMaskLoad() {
+  if (!bootDone || document.body.classList.contains("dragging")) return;
+  renderPile();
+}
+for (let slot = 1; slot <= 6; slot++) {
+  const img = new Image();
+  img.addEventListener("load", onMaskLoad);
+  img.src = "assets/masks/mask_" + slot + ".png" + ASSET_V;
+  maskImgs[slot] = img;
+}
+["yuandian", "nuolan"].forEach(key => {
+  for (let slot = 1; slot <= 6; slot++) {
+    const img = new Image();
+    img.addEventListener("load", onMaskLoad);
+    img.src = pieceSrc(slot, key);
+    pieceImgs[key + "_" + slot] = img;
+  }
+});
 
-let picked = null;              // 当前选中的版本
-const filled = {};              // 槽位 -> 版本
+function shardColor(key) {
+  return key === "yuandian" ? "#e2a04a" : "#3c7f86";
+}
+
+function drawShardSurface(canvas, piece) {
+  const w = canvas.width;
+  const h = canvas.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.clearRect(0, 0, w, h);
+  const box = BOXES[piece.slot];
+  const scale = w / box.w;
+  const pimg = pieceImgs[piece.key + "_" + piece.slot];
+  if (pimg && pimg.naturalWidth) {
+    ctx.drawImage(pimg, -box.x * scale, -box.y * scale, NATURAL.w * scale, NATURAL.h * scale);
+    return;
+  }
+  const img = maskImgs[piece.slot];
+  if (img && img.naturalWidth) {
+    ctx.drawImage(img, -box.x * scale, -box.y * scale, NATURAL.w * scale, NATURAL.h * scale);
+    ctx.globalCompositeOperation = "source-in";
+    ctx.fillStyle = shardColor(piece.key);
+    ctx.fillRect(0, 0, w, h);
+  } else {
+    ctx.fillStyle = shardColor(piece.key);
+    ctx.fillRect(0, 0, w, h);
+  }
+}
+
+function mountShardSurface(btn, piece) {
+  // 按棋盘比例出图，拖到马身上放大时不糊。
+  const box = BOXES[piece.slot];
+  const res = Math.max(piece.scale, boardScale()) * (window.devicePixelRatio || 1);
+  const w = Math.max(2, Math.round(box.w * res));
+  const h = Math.max(2, Math.round(box.h * res));
+  const canvas = document.createElement("canvas");
+  canvas.className = "shard-surface";
+  canvas.width = w;
+  canvas.height = h;
+  btn.replaceChildren(canvas);
+  const paint = () => drawShardSurface(canvas, piece);
+  paint();
+  const pimg = pieceImgs[piece.key + "_" + piece.slot];
+  const mimg = maskImgs[piece.slot];
+  if (pimg && !pimg.naturalWidth) pimg.addEventListener("load", paint);
+  else if (mimg && !mimg.naturalWidth) mimg.addEventListener("load", paint);
+}
+
+let held = null;
+let busy = false;
+let zTop = 12;
+let pendingTier = null;
+const filled = {};
+const order = [];
 const partEls = {};
+let shards = [];
 
-const stage    = document.getElementById("stage");
-const versionsEl = document.getElementById("versions");
-const slotsEl  = document.getElementById("slots");
+const stage = document.getElementById("stage");
+const boardEl = document.getElementById("board");
+const pile = document.getElementById("pile");
+const sequence = document.getElementById("sequence");
 
-/* ---- 按形状判断点到了哪一块 ---- */
+function buildSequence() {
+  sequence.replaceChildren();
+  for (let n = 0; n < 6; n++) {
+    const cell = document.createElement("span");
+    cell.className = "seq-cell";
+    sequence.appendChild(cell);
+  }
+}
+
+function updateSequence() {
+  [...sequence.children].forEach((cell, n) => {
+    cell.className = "seq-cell";
+    if (n < order.length) cell.classList.add("on", order[n].key);
+  });
+}
+
+function setBusyState(on) {
+  busy = on;
+  document.body.classList.toggle("is-busy", on);
+}
+
+function rejectBoard() {
+  boardEl.classList.remove("reject");
+  void boardEl.offsetWidth;
+  boardEl.classList.add("reject");
+  window.setTimeout(() => boardEl.classList.remove("reject"), 450);
+}
 
 let regionCtx = null;
 const regionImg = new Image();
@@ -344,202 +536,477 @@ function regionAt(clientX, clientY) {
   if (!regionCtx) return 0;
   const r = stage.getBoundingClientRect();
   if (clientX < r.left || clientX > r.right || clientY < r.top || clientY > r.bottom) return 0;
-  const x = Math.floor((clientX - r.left) / r.width  * NATURAL.w);
-  const y = Math.floor((clientY - r.top)  / r.height * NATURAL.h);
+  const x = Math.floor((clientX - r.left) / r.width * NATURAL.w);
+  const y = Math.floor((clientY - r.top) / r.height * NATURAL.h);
   const d = regionCtx.getImageData(x, y, 1, 1).data;
   return d[3] > 8 ? d[0] : 0;
 }
 const isSlot = i => i >= 1 && i <= 6;
 
-/* ---- 构建 ---- */
+function stillURL(beat, key) {
+  return encodeURI("../情节-素材/" + BEATS[beat].file[key]);
+}
+function endingFor(n) {
+  if (n === 6) return { tier: "intact", line: "壁画连成一条归途。下一个读到的，仍是完整的史诗。" };
+  if (n >= 4) return { tier: "seams", line: "接缝露出来了。故事还在，只是不再严丝合缝。" };
+  if (n === 3) return { tier: "dissolve", line: "壁画开始溶解。归途还在墙上，已经对不齐。" };
+  if (n >= 1) return { tier: "broken", line: "原典的结构所剩很少。后来的人很难从这面墙上读回荷马。" };
+  return { tier: "noise", line: "墙上只剩噪声。壳还在，这一次传下去的讲述已经换掉。" };
+}
 
 function buildStage() {
-  [1,2,3,4,5,6,7,8].forEach(i => {
+  [1, 2, 3, 4, 5, 6].forEach(i => {
     const el = document.createElement("div");
     el.className = "part";
     el.dataset.part = i;
-    const mask = `url("assets/masks/mask_${i}.png")`;
+    const mask = `url("assets/masks/mask_${i}.png${ASSET_V}")`;
     el.style.webkitMaskImage = mask;
     el.style.maskImage = mask;
-    el.style.setProperty("--art", `url("assets/masks/art_${i}.png")`);
-    if (STRUCTURE.includes(i)) {
-      el.dataset.role = "structure";
-      el.style.backgroundImage = `url("assets/masks/art_${i}.png")`;
-    } else {
-      el.dataset.state = "empty";
-    }
+    el.style.backgroundImage = `url("${frameSrc(i)}")`;
+    el.style.backgroundSize = "100% 100%";
+    el.style.backgroundRepeat = "no-repeat";
+    el.dataset.state = "empty";
     stage.appendChild(el);
     partEls[i] = el;
   });
-  const seams = document.createElement("div");
-  seams.className = "seams";
-  stage.appendChild(seams);
-
-  const layer = document.createElement("div");
-  layer.className = "marks";
-  MARKS.forEach(m => {
-    const s = document.createElement("span");
-    s.className = "mark";
-    if (STRUCTURE.includes(m.i)) s.dataset.role = "structure";
-    s.style.left = m.x + "%";
-    s.style.top = m.y + "%";
-    s.textContent = m.i;
-    layer.appendChild(s);
-  });
-  stage.appendChild(layer);
 }
 
-function buildVersions() {
-  versionsEl.innerHTML = "";
-  VERSIONS.forEach(v => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "vbtn";
-    b.dataset.key = v.key;
-    b.setAttribute("aria-pressed", picked === v.key ? "true" : "false");
-    b.innerHTML = `<span class="vdot tex-${v.key}"></span><span>${v.name}</span>`;
-    versionsEl.appendChild(b);
+function scatter() {
+  const items = [];
+  for (let slot = 1; slot <= 6; slot++) {
+    items.push({ slot, key: "yuandian" });
+    items.push({ slot, key: "nuolan" });
+  }
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = items[i]; items[i] = items[j]; items[j] = t;
+  }
+  const n = items.length;
+  shards = items.map((item, id) => ({
+    id, slot: item.slot, key: item.key, placed: false,
+    rx: Math.min(1, Math.max(0, (id % 2 ? 0.88 : 0.12) + (Math.random() - 0.5) * 0.3)),
+    ry: Math.min(1, Math.max(0, (id + 0.5) / n + (Math.random() - 0.5) * 0.06)),
+    rot: Math.random() * 50 - 25,
+    z: id + 1
+  }));
+  zTop = shards.length;
+}
+
+function pose(btn, piece) {
+  const rot = held === piece.id ? 0 : piece.rot;
+  const sc = held === piece.id ? 1.06 : 1;
+  btn.style.transform = "rotate(" + rot + "deg) scale(" + sc + ")";
+}
+
+function raise(btn, piece) {
+  piece.z = ++zTop;
+  btn.style.zIndex = String(piece.z);
+  btn.style.transform = "rotate(0deg) scale(1.08)";
+}
+
+function boardScale() {
+  const w = stage.getBoundingClientRect().width;
+  return w > 0 ? w / NATURAL.w : 1;
+}
+
+// 所有残片共用一个比例，大小关系与马身一致。
+function pileScale(w, h) {
+  let maxW = 0, maxH = 0;
+  Object.values(BOXES).forEach(b => {
+    maxW = Math.max(maxW, b.w);
+    maxH = Math.max(maxH, b.h);
+  });
+  return Math.min(boardScale() * 0.62, (w * 0.98) / maxW, (h * 0.55) / maxH);
+}
+
+function metricsFor(piece, scale) {
+  const box = BOXES[piece.slot];
+  return {
+    dw: box.w * scale,
+    dh: box.h * scale,
+    scale
+  };
+}
+
+function measurePile() {
+  const tray = pile.parentElement;
+  const rect = pile.getBoundingClientRect();
+  let w = rect.width || pile.clientWidth || (tray ? tray.clientWidth - 24 : 0);
+  let h = rect.height || pile.clientHeight;
+  if (w < 48) w = tray ? Math.max(200, tray.clientWidth - 24) : 260;
+  if (h < 120) h = 400;
+  return { w, h };
+}
+
+function layoutPile() {
+  const { w, h } = measurePile();
+  const scale = pileScale(w, h);
+  shards.forEach(piece => {
+    if (piece.placed) return;
+    const m = metricsFor(piece, scale);
+    piece.dw = m.dw;
+    piece.dh = m.dh;
+    piece.scale = m.scale;
+    const slackX = Math.max(0, w - m.dw);
+    const slackY = Math.max(0, h - m.dh);
+    piece.px = piece.rx * slackX;
+    piece.py = piece.ry * slackY;
   });
 }
 
-function buildSlots() {
-  slotsEl.innerHTML = "";
-  SLOTS.forEach(s => {
-    const v = filled[s.i];
-    const el = document.createElement("article");
-    el.className = "piece";
-    el.dataset.filled = v ? "yes" : "no";
-    if (v) el.dataset.fill = v;
-    el.innerHTML =
-      `<div class="p-no">${s.i}</div>` +
-      `<p class="p-desc">${s.desc}</p>` +
-      `<p class="p-val">${v ? nameOf(v) : "—"}` +
-      (v ? `<button class="s-x" type="button" data-x="${s.i}" aria-label="移除">×</button>` : "") +
-      `</p>`;
-    slotsEl.appendChild(el);
+function renderPile() {
+  layoutPile();
+  pile.replaceChildren();
+  shards.forEach(piece => {
+    if (piece.placed) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "shard " + piece.key + (held === piece.id ? " held" : "");
+    btn.style.left = piece.px + "px";
+    btn.style.top = piece.py + "px";
+    btn.style.width = piece.dw + "px";
+    btn.style.height = piece.dh + "px";
+    btn.style.zIndex = String(piece.z);
+    mountShardSurface(btn, piece);
+    btn.setAttribute("aria-pressed", held === piece.id ? "true" : "false");
+    btn.setAttribute("aria-label", "残片");
+    pile.appendChild(btn);
+    pose(btn, piece);
+    bindShard(btn, piece);
   });
 }
 
-/* ---- 状态 ---- */
-
-function put(i, key) {
-  filled[i] = key;
+function paint(i, key) {
   const el = partEls[i];
   el.dataset.state = "filled";
   el.dataset.fill = key;
-  el.style.backgroundImage = "";
-  VERSIONS.forEach(v => el.classList.toggle("tex-" + v.key, v.key === key));
-  render();
+  el.style.backgroundImage = `url("${pieceSrc(i, key)}")`;
+  el.style.backgroundSize = "100% 100%";
+  el.classList.remove("tex-yuandian", "tex-nuolan");
+  el.classList.remove("landed");
+  void el.offsetWidth;
+  el.classList.add("landed");
 }
 
-function take(i) {
-  delete filled[i];
+function closeScroll() {
+  setBusyState(false);
+  pendingTier = null;
+  const finds = document.getElementById("finds");
+  finds.replaceChildren();
+  finds.className = "scroll";
+  document.getElementById("veil").classList.remove("on");
+}
+
+function reveal(beat, key) {
+  const finds = document.getElementById("finds");
+  finds.className = "scroll";
+  const piece = document.createElement("div");
+  piece.className = "scroll-piece";
+  const sheet = document.createElement("div");
+  sheet.className = "sheet";
+  const img = document.createElement("img");
+  img.src = stillURL(beat, key);
+  img.alt = "";
+  sheet.appendChild(img);
+  const left = document.createElement("i");
+  left.className = "roll roll-l";
+  const right = document.createElement("i");
+  right.className = "roll roll-r";
+  const shut = document.createElement("button");
+  shut.type = "button";
+  shut.className = "shut";
+  shut.hidden = true;
+  shut.setAttribute("aria-label", "关闭");
+  shut.textContent = "×";
+  shut.addEventListener("click", closeScroll);
+  piece.append(left, sheet, right, shut);
+  finds.replaceChildren(piece);
+  document.getElementById("veil").classList.add("on");
+  let settled = false;
+  let settleTimer = 0;
+  const finish = () => {
+    if (settled || !finds.contains(piece)) return;
+    settled = true;
+    window.clearTimeout(settleTimer);
+    if (pendingTier) finds.classList.add(pendingTier);
+    shut.hidden = false;
+  };
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) finish();
+  else {
+    sheet.addEventListener("animationend", finish, { once: true });
+    settleTimer = window.setTimeout(finish, 3200);
+  }
+}
+
+function put(i, piece) {
+  if (busy || !isSlot(i) || i !== piece.slot || filled[i] || piece.placed || order.length >= 6) return;
+  piece.placed = true;
+  filled[i] = piece.key;
+  order.push({ slot: i, key: piece.key });
+  held = null;
+  setBusyState(true);
+  paint(i, piece.key);
+  renderPile();
+  updateSequence();
+  const beat = order.length - 1;
+  const key = piece.key;
+  if (order.length === 6) {
+    pendingTier = endingFor(order.filter(item => item.key === "yuandian").length).tier;
+  }
+  window.setTimeout(() => reveal(beat, key), 1100);
+}
+
+let hovered = 0;
+function clearPart(i) {
   const el = partEls[i];
   el.dataset.state = "empty";
   delete el.dataset.fill;
-  el.style.backgroundImage = "";
-  VERSIONS.forEach(v => el.classList.remove("tex-" + v.key));
-  render();
+  el.style.backgroundImage = `url("${frameSrc(i)}")`;
+  el.style.backgroundSize = "100% 100%";
+  el.classList.remove("tex-yuandian", "tex-nuolan", "landed");
 }
 
-function render() {
-  buildSlots();
-  const n = SLOTS.filter(s => filled[s.i]).length;
-  document.getElementById("progress").textContent = `${n} / 6`;
-  document.getElementById("count").textContent = `已放 ${n} 个`;
+function take(i) {
+  if (busy || !filled[i]) return;
+  const piece = shards.find(s => s.slot === i && s.placed);
+  if (!piece) return;
+  piece.placed = false;
+  delete filled[i];
+  const at = order.findIndex(item => item.slot === i);
+  if (at >= 0) order.splice(at, 1);
+  held = null;
+  clearPart(i);
+  renderPile();
+  updateSequence();
 }
 
-/* ---- 交互 ---- */
-
-let hovered = 0;
 function hover(i) {
   if (hovered && partEls[hovered]) partEls[hovered].classList.remove("hover");
-  hovered = isSlot(i) ? i : 0;
+  const piece = held == null ? null : shards.find(s => s.id === held);
+  if (piece) hovered = i === piece.slot && !filled[i] ? i : 0;
+  else hovered = isSlot(i) && filled[i] ? i : 0;
   if (hovered) partEls[hovered].classList.add("hover");
+  syncStageHint(i);
 }
 
-stage.addEventListener("mousemove", e => hover(picked ? regionAt(e.clientX, e.clientY) : 0));
+function syncStageHint(i) {
+  stage.classList.remove("target-ok", "target-no", "can-lift");
+  if (busy) return;
+  const piece = held == null ? null : shards.find(s => s.id === held);
+  if (piece) {
+    if (i === piece.slot && !filled[i]) stage.classList.add("target-ok");
+    else if (isSlot(i)) stage.classList.add("target-no");
+  } else if (isSlot(i) && filled[i]) {
+    stage.classList.add("can-lift");
+  }
+}
+
+stage.addEventListener("mousemove", e => {
+  if (busy) { hover(0); return; }
+  hover(regionAt(e.clientX, e.clientY));
+});
 stage.addEventListener("mouseleave", () => hover(0));
-
 stage.addEventListener("click", e => {
+  if (busy) return;
   const i = regionAt(e.clientX, e.clientY);
-  if (!isSlot(i)) return;
-  if (picked) put(i, picked);
-  else if (filled[i]) take(i);
+  if (held == null) {
+    if (filled[i]) take(i);
+    return;
+  }
+  const piece = shards.find(s => s.id === held);
+  if (piece) put(i, piece);
 });
 
-/* 拖拽：按住色块拖到马身上放下 */
-
-let drag = null;
-let swallowClick = false;
-
-versionsEl.addEventListener("pointerdown", e => {
-  const b = e.target.closest(".vbtn");
-  if (!b || e.button > 0) return;
-  e.preventDefault();
-  drag = { key: b.dataset.key, x: e.clientX, y: e.clientY, ghost: null };
-  versionsEl.setPointerCapture(e.pointerId);
-});
-
-versionsEl.addEventListener("pointermove", e => {
-  if (!drag) return;
-  if (!drag.ghost && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 5) {
-    drag.ghost = document.createElement("div");
-    drag.ghost.className = "ghost tex-" + drag.key;
-    document.body.appendChild(drag.ghost);
-    document.body.classList.add("dragging");
+// 残片是不规则形状：点到透明处要落到下面那块。
+function solidAt(btn, clientX, clientY) {
+  const canvas = btn.firstElementChild;
+  if (!canvas || !canvas.getContext) return true;
+  const r = btn.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  const piece = shards.find(s => String(s.id) === btn.dataset.id);
+  const rad = -((piece && held !== piece.id ? piece.rot : 0) * Math.PI) / 180;
+  const dx = clientX - cx;
+  const dy = clientY - cy;
+  const lx = dx * Math.cos(rad) - dy * Math.sin(rad) + btn.offsetWidth / 2;
+  const ly = dx * Math.sin(rad) + dy * Math.cos(rad) + btn.offsetHeight / 2;
+  if (lx < 0 || ly < 0 || lx >= btn.offsetWidth || ly >= btn.offsetHeight) return false;
+  const px = Math.floor(lx / btn.offsetWidth * canvas.width);
+  const py = Math.floor(ly / btn.offsetHeight * canvas.height);
+  try {
+    return canvas.getContext("2d").getImageData(px, py, 1, 1).data[3] > 24;
+  } catch (err) {
+    return true;
   }
-  if (drag.ghost) {
-    drag.ghost.style.left = e.clientX + "px";
-    drag.ghost.style.top  = e.clientY + "px";
-    hover(regionAt(e.clientX, e.clientY));
-  }
-});
-
-function endDrag(e, drop) {
-  if (!drag) return;
-  const d = drag;
-  drag = null;
-  if (d.ghost) {
-    d.ghost.remove();
-    document.body.classList.remove("dragging");
-    hover(0);
-    if (drop) {
-      const i = regionAt(e.clientX, e.clientY);
-      if (isSlot(i)) put(i, d.key);
-    }
-  } else if (drop) {
-    picked = picked === d.key ? null : d.key;
-    buildVersions();
-  }
-  swallowClick = true;
-  setTimeout(() => { swallowClick = false; }, 0);
 }
 
-versionsEl.addEventListener("pointerup", e => endDrag(e, true));
-versionsEl.addEventListener("pointercancel", e => endDrag(e, false));
+// 不规则块的外接框中心常落在别的区，所以按块本身离槽位多近来吸附。
+function snapSlot(piece, centerX, centerY) {
+  if (filled[piece.slot]) return 0;
+  const r = stage.getBoundingClientRect();
+  const k = r.width / NATURAL.w;
+  const box = BOXES[piece.slot];
+  const sx = r.left + (box.x + box.w / 2) * k;
+  const sy = r.top + (box.y + box.h / 2) * k;
+  const reach = Math.max(36, Math.min(box.w, box.h) * k * 0.3);
+  return Math.hypot(centerX - sx, centerY - sy) <= reach ? piece.slot : 0;
+}
 
-/* 键盘 / 辅助访问仍然走 click */
-versionsEl.addEventListener("click", e => {
-  if (swallowClick) return;
-  const b = e.target.closest(".vbtn");
-  if (!b) return;
-  picked = picked === b.dataset.key ? null : b.dataset.key;
-  buildVersions();
+function shardUnder(clientX, clientY) {
+  return [...pile.querySelectorAll(".shard")]
+    .sort((a, b) => Number(b.style.zIndex) - Number(a.style.zIndex))
+    .find(el => solidAt(el, clientX, clientY));
+}
+
+function bindShard(btn, piece) {
+  let start = null;
+  btn.dataset.id = String(piece.id);
+  const endDrag = () => {
+    document.body.classList.remove("dragging");
+    btn.classList.remove("dragging");
+  };
+  // 放大到棋盘比例后，按住的那一点仍留在指针下。
+  const centerAt = (clientX, clientY) => {
+    const k = boardScale();
+    const box = BOXES[piece.slot];
+    return {
+      x: clientX - (start.fx - 0.5) * box.w * k,
+      y: clientY - (start.fy - 0.5) * box.h * k
+    };
+  };
+  const follow = (clientX, clientY) => {
+    const c = centerAt(clientX, clientY);
+    btn.style.left = (c.x - piece.dw / 2) + "px";
+    btn.style.top = (c.y - piece.dh / 2) + "px";
+  };
+  btn._grab = e => {
+    const r = btn.getBoundingClientRect();
+    start = {
+      x: e.clientX, y: e.clientY, moved: false, floated: false,
+      fx: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)),
+      fy: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))
+    };
+    raise(btn, piece);
+    btn.setPointerCapture(e.pointerId);
+  };
+  btn.addEventListener("pointerdown", e => {
+    if (busy || e.button > 0 || piece.placed) return;
+    if (!solidAt(btn, e.clientX, e.clientY)) {
+      e.preventDefault();
+      const below = shardUnder(e.clientX, e.clientY);
+      if (below && below !== btn && below._grab) below._grab(e);
+      return;
+    }
+    btn._grab(e);
+  });
+  btn.addEventListener("pointermove", e => {
+    if (!start) return;
+    if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 6) start.moved = true;
+    if (!start.moved) return;
+    if (!start.floated) {
+      start.floated = true;
+      document.body.classList.add("dragging");
+      btn.classList.add("dragging");
+      btn.style.position = "fixed";
+      btn.style.zIndex = String(++zTop);
+      piece.z = zTop;
+      btn.style.transition = "transform .22s var(--ease-out), filter .18s ease";
+      btn.style.transform = "rotate(0deg) scale(" + (boardScale() / piece.scale) + ")";
+      follow(e.clientX, e.clientY);
+    }
+    if (start.floated) follow(e.clientX, e.clientY);
+    const c = centerAt(e.clientX, e.clientY);
+    hover(snapSlot(piece, c.x, c.y) || regionAt(e.clientX, e.clientY));
+  });
+  btn.addEventListener("pointerup", e => {
+    if (!start) return;
+    const moved = start.moved;
+    const c = centerAt(e.clientX, e.clientY);
+    start = null;
+    endDrag();
+    const slot = snapSlot(piece, c.x, c.y) || regionAt(e.clientX, e.clientY);
+    if (!moved) {
+      held = held === piece.id ? null : piece.id;
+      renderPile();
+      syncStageHint(0);
+      return;
+    }
+    hover(0);
+    if (slot === piece.slot && !filled[slot]) put(slot, piece);
+    else {
+      if (isSlot(slot)) rejectBoard();
+      renderPile();
+    }
+  });
+  btn.addEventListener("pointercancel", () => {
+    start = null;
+    endDrag();
+    renderPile();
+    hover(0);
+  });
+}
+
+function reset() {
+  order.length = 0;
+  Object.keys(filled).forEach(k => delete filled[k]);
+  held = null;
+  setBusyState(false);
+  pendingTier = null;
+  document.getElementById("veil").classList.remove("on");
+  [1, 2, 3, 4, 5, 6].forEach(clearPart);
+  const finds = document.getElementById("finds");
+  finds.replaceChildren();
+  finds.className = "scroll";
+  scatter();
+  renderPile();
+  updateSequence();
+  syncStageHint(0);
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && document.getElementById("veil").classList.contains("on")) {
+    e.preventDefault();
+    closeScroll();
+    return;
+  }
+  if (e.key !== "r" && e.key !== "R") return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = document.activeElement && document.activeElement.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
+  if (!busy) reset();
 });
 
-slotsEl.addEventListener("click", e => {
-  const b = e.target.closest("[data-x]");
-  if (b) take(Number(b.dataset.x));
-});
+function boot() {
+  buildSequence();
+  buildStage();
+  scatter();
+  bootDone = true;
+  renderPile();
+  updateSequence();
+  window.requestAnimationFrame(renderPile);
+}
 
-document.getElementById("clear").addEventListener("click", () => {
-  SLOTS.forEach(s => { if (filled[s.i]) take(s.i); });
-});
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", boot);
+} else {
+  boot();
+}
 
-buildStage();
-buildVersions();
-render();
+window.addEventListener("resize", () => {
+  if (!busy && !document.body.classList.contains("dragging")) renderPile();
+});
+if (window.ResizeObserver) {
+  let pileTimer = 0;
+  const pileObserver = new ResizeObserver(() => {
+    if (busy || document.body.classList.contains("dragging")) return;
+    window.clearTimeout(pileTimer);
+    pileTimer = window.setTimeout(() => {
+      if (!busy && !document.body.classList.contains("dragging")) renderPile();
+    }, 80);
+  });
+  pileObserver.observe(pile);
+  if (pile.parentElement) pileObserver.observe(pile.parentElement);
+}
 </script>
 </body>
 </html>
