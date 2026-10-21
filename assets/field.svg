@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" fill="none">
+  <defs>
+    <radialGradient id="paper" cx="50%" cy="44%" r="72%">
+      <stop offset="0%" stop-color="#f7ecda"/>
+      <stop offset="28%" stop-color="#e6d0b4"/>
+      <stop offset="62%" stop-color="#a67c56"/>
+      <stop offset="100%" stop-color="#4e3426"/>
+    </radialGradient>
+    <filter id="fiber" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.45  0 0 0 0 0.3  0 0 0 0 0.16  0 0 0 0.16 0"/>
+    </filter>
+    <g id="star">
+      <path d="M0-7 1.1-1.1 7 0 1.1 1.1 0 7-1.1 1.1-7 0-1.1-1.1Z"/>
+    </g>
+    <g id="column" stroke="#8a6342" stroke-width="1.2">
+      <path d="M0 22 H108"/>
+      <path d="M14 36 H94"/>
+      <path d="M22 50 Q6 28 18 12"/>
+      <path d="M86 50 Q102 28 90 12"/>
+      <path d="M22 36 Q54 68 86 36"/>
+      <path d="M34 68 V268"/>
+      <path d="M54 68 V268"/>
+      <path d="M74 68 V268"/>
+      <path d="M26 268 H82"/>
+      <path d="M12 284 H96"/>
+    </g>
+    <g id="sun" stroke="#8a6342" stroke-width="1.15">
+      <circle r="16"/>
+      <circle r="6"/>
+      <path d="M0-22V-38M0 22V38M-22 0H-38M22 0H38M-16-16-28-28M16-16 28-28M-16 16-28 28M16 16 28 28"/>
+    </g>
+    <g id="bloom" stroke="#8a6342" stroke-width="1.05">
+      <circle r="2.4"/>
+      <circle cy="-8" r="3.6"/>
+      <circle cx="7.6" cy="-2.4" r="3.6"/>
+      <circle cx="4.6" cy="6.4" r="3.6"/>
+      <circle cx="-4.6" cy="6.4" r="3.6"/>
+      <circle cx="-7.6" cy="-2.4" r="3.6"/>
+    </g>
+    <g id="wreath" stroke="#8a6342" stroke-width="1.1">
+      <path d="M6 40 A 24 24 0 1 1 54 40"/>
+      <path d="M16 22 L8 12 M26 12 L24 2 M38 14 L46 4 M48 26 L58 20 M44 38 L52 48 M28 42 L26 52 M14 36 L4 40"/>
+    </g>
+    <g id="wheat" stroke="#8a6342" stroke-width="1.1">
+      <path d="M18 78 Q20 40 16 6"/>
+      <path d="M16 62 Q6 54 8 46 Q16 50 18 58"/>
+      <path d="M17 50 Q28 42 26 34 Q18 38 16 46"/>
+      <path d="M16 38 Q6 30 8 22 Q16 26 18 34"/>
+      <path d="M17 26 Q28 18 26 10 Q18 14 16 22"/>
+      <path d="M16 16 Q8 8 12 2"/>
+    </g>
+    <g id="dove" stroke="#8a6342" stroke-width="1.15">
+      <path d="M2 18 Q16 6 34 14 Q48 2 58 14 Q44 16 36 26 Q22 20 10 28 Q4 20 2 18"/>
+      <path d="M34 14 Q24 2 16 12"/>
+      <path d="M14 22 L6 32"/>
+    </g>
+    <g id="amphora" stroke="#8a6342" stroke-width="1.15">
+      <path d="M18 2 H36"/>
+      <path d="M20 2 V16 Q4 34 12 64 Q18 96 28 104 Q38 96 44 64 Q52 34 36 16 V2"/>
+      <path d="M20 18 Q2 30 8 50"/>
+      <path d="M36 18 Q54 30 48 50"/>
+      <path d="M14 104 H42"/>
+      <path d="M18 112 H38"/>
+    </g>
+    <g id="lyre" stroke="#8a6342" stroke-width="1.15">
+      <path d="M10 36 Q4 8 18 2"/>
+      <path d="M46 36 Q52 8 38 2"/>
+      <path d="M18 2 H38"/>
+      <path d="M18 10 Q28 22 28 50"/>
+      <path d="M38 10 Q28 22 28 50"/>
+      <path d="M20 14 V42"/>
+      <path d="M28 12 V46"/>
+      <path d="M36 14 V42"/>
+      <path d="M12 50 H44"/>
+      <path d="M16 58 H40"/>
+    </g>
+    <g id="temple" stroke="#8a6342" stroke-width="1.15">
+      <path d="M2 32 H98"/>
+      <path d="M14 32 L50 2 L86 32"/>
+      <path d="M22 32 V64 M36 32 V64 M50 32 V64 M64 32 V64 M78 32 V64"/>
+      <path d="M16 64 H84"/>
+      <path d="M6 74 H94"/>
+    </g>
+    <g id="grapes" stroke="#8a6342" stroke-width="1.05">
+      <path d="M28 4 Q34 16 24 22"/>
+      <path d="M24 18 Q40 8 46 16"/>
+      <circle cx="24" cy="34" r="6"/>
+      <circle cx="36" cy="34" r="6"/>
+      <circle cx="18" cy="46" r="6"/>
+      <circle cx="30" cy="46" r="6"/>
+      <circle cx="42" cy="46" r="6"/>
+      <circle cx="24" cy="58" r="6"/>
+      <circle cx="36" cy="58" r="6"/>
+    </g>
+    <pattern id="vine" width="86" height="26" patternUnits="userSpaceOnUse">
+      <path d="M0 16 Q22 4 43 16 Q64 28 86 16" stroke="#8a6342" stroke-width="1" fill="none"/>
+      <path d="M22 12 Q16 4 22 2 Q28 8 24 14" stroke="#8a6342" stroke-width="0.9" fill="none"/>
+      <path d="M58 18 Q66 10 64 4 Q54 10 56 18" stroke="#8a6342" stroke-width="0.9" fill="none"/>
+    </pattern>
+  </defs>
+  <rect width="1440" height="900" fill="url(#paper)"/>
+  <rect width="1440" height="900" filter="url(#fiber)"/>
+  <ellipse cx="180" cy="150" rx="160" ry="70" fill="#8a5430" opacity="0.12"/>
+  <ellipse cx="1240" cy="760" rx="190" ry="80" fill="#6e4024" opacity="0.14"/>
+  <ellipse cx="260" cy="780" rx="90" ry="36" fill="#a56b42" opacity="0.1"/>
+  <ellipse cx="1180" cy="140" rx="70" ry="28" fill="#8a5430" opacity="0.1"/>
+  <rect y="16" width="1440" height="26" fill="url(#vine)" opacity="0.55"/>
+  <rect y="858" width="1440" height="26" fill="url(#vine)" opacity="0.5"/>
+  <g opacity="0.88">
+    <use href="#column" x="18" y="70"/>
+    <use href="#column" x="1314" y="70"/>
+    <use href="#sun" x="720" y="78"/>
+    <path d="M560 108 Q720 36 880 108" stroke="#8a6342" stroke-width="1.15"/>
+    <use href="#dove" x="210" y="36"/>
+    <g transform="translate(1228 40) scale(-1 1)">
+      <use href="#dove"/>
+    </g>
+    <use href="#wheat" x="150" y="250"/>
+    <use href="#wreath" x="48" y="400"/>
+    <use href="#bloom" x="196" y="430"/>
+    <use href="#lyre" x="56" y="560"/>
+    <use href="#amphora" x="168" y="700"/>
+    <use href="#grapes" x="1236" y="250"/>
+    <use href="#bloom" x="1210" y="400"/>
+    <use href="#temple" x="1248" y="500"/>
+    <use href="#wheat" x="1336" y="680"/>
+    <use href="#wreath" x="1188" y="760"/>
+    <use href="#bloom" x="720" y="820"/>
+  </g>
+  <g fill="#8a6342">
+    <use href="#star" transform="translate(280 120)" opacity="0.7"/>
+    <use href="#star" transform="translate(1160 130) scale(0.75)" opacity="0.6"/>
+    <use href="#star" transform="translate(340 220) scale(0.55)" opacity="0.5"/>
+    <use href="#star" transform="translate(1088 210)" opacity="0.45"/>
+    <use href="#star" transform="translate(250 640) scale(0.65)" opacity="0.45"/>
+    <use href="#star" transform="translate(1100 640) scale(0.5)" opacity="0.4"/>
+  </g>
+</svg>
