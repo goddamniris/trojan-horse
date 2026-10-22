@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>木马</title>
+<script>
+  try {
+    const fromBook = new URLSearchParams(location.search).get("open") === "1";
+    if (fromBook && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.documentElement.classList.add("opening");
+    }
+  } catch (err) {}
+</script>
+<style>
+  :root {
+    --bone: #f3e6d2;
+    --field: #f6ead8;
+    --ink: #2c241c;
+    --ochre: #9a7040;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { height: 100%; }
+  html.opening { overflow-x: hidden; }
+
+  body {
+    min-height: 100%;
+    background-color: #5c4030;
+    color: var(--ink);
+    font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+    padding: clamp(16px, 4vw, 48px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .page-field {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  .book {
+    position: relative;
+    z-index: 1;
+    width: min(1180px, 100%);
+    perspective: 2200px;
+    perspective-origin: 8% 46%;
+  }
+
+  html.opening .sheet {
+    transform-origin: left center;
+    transform: rotateY(64deg);
+    opacity: 0.7;
+    will-change: transform;
+  }
+
+  .sheet {
+    position: relative;
+    padding: clamp(16px, 2.6vw, 26px);
+    background: var(--bone);
+    border: 1px solid var(--ink);
+    box-shadow:
+      0 0 0 6px rgba(122, 91, 62, 0.18),
+      0 18px 40px rgba(48, 32, 18, 0.16);
+    transform-origin: left center;
+    backface-visibility: hidden;
+  }
+
+  .sheet.is-turning {
+    will-change: transform;
+    pointer-events: none;
+  }
+
+  .slab-marks {
+    position: absolute;
+    inset: 7px;
+    pointer-events: none;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-8 -8 16 16'><path d='M0-7 1.1-1.1 7 0 1.1 1.1 0 7-1.1 1.1-7 0-1.1-1.1Z' fill='%237a5b3e'/></svg>") 0 0 / 12px 12px no-repeat,
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-8 -8 16 16'><path d='M0-7 1.1-1.1 7 0 1.1 1.1 0 7-1.1 1.1-7 0-1.1-1.1Z' fill='%237a5b3e'/></svg>") 100% 0 / 12px 12px no-repeat,
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-8 -8 16 16'><path d='M0-7 1.1-1.1 7 0 1.1 1.1 0 7-1.1 1.1-7 0-1.1-1.1Z' fill='%237a5b3e'/></svg>") 0 100% / 12px 12px no-repeat,
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-8 -8 16 16'><path d='M0-7 1.1-1.1 7 0 1.1 1.1 0 7-1.1 1.1-7 0-1.1-1.1Z' fill='%237a5b3e'/></svg>") 100% 100% / 12px 12px no-repeat;
+    opacity: 0.65;
+  }
+
+  .plate { position: relative; }
+
+  .mural {
+    display: block;
+    width: 100%;
+    height: auto;
+    box-shadow: 0 24px 50px rgba(18, 24, 22, 0.28);
+  }
+
+  .shut {
+    position: absolute;
+    top: 0;
+    right: 0;
+    transform: translate(40%, -40%);
+    z-index: 3;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--ink);
+    background: var(--field);
+    color: var(--ink);
+    font: 22px/1 "Songti SC", "STSong", Palatino, serif;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(20, 10, 4, 0.28);
+    transition: transform .15s ease, background .15s ease;
+  }
+  .shut:hover { background: #f8f0e4; transform: translate(40%, -40%) scale(1.06); }
+  .shut:active { transform: translate(40%, -40%) scale(0.96); }
+  .shut:focus-visible { outline: 2px solid var(--ochre); outline-offset: 3px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shut { transition: none; }
+  }
+</style>
+</head>
+<body>
+<img class="page-field" src="assets/field.svg?v=2" alt="" />
+<div class="book">
+  <main class="sheet" id="sheet">
+    <span class="slab-marks" aria-hidden="true"></span>
+    <button type="button" class="shut" id="shut" aria-label="关闭">×</button>
+    <div class="plate">
+      <img class="mural" id="mural" alt="" />
+    </div>
+  </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script>
+const ENDING_FILE = {
+  intact: "stills/结局_6原典_intact_v3.jpg",
+  seams: "stills/结局_5-4原典_seams_v1.jpg",
+  dissolve: "stills/结局_3原典_dissolve_v1.jpg",
+  broken: "stills/结局_2-1原典_broken_v1.jpg",
+  noise: "stills/结局_0原典_v1.jpg"
+};
+
+const params = new URLSearchParams(location.search);
+const tier = ENDING_FILE[params.get("tier")] ? params.get("tier") : "intact";
+const mural = document.getElementById("mural");
+const sheet = document.getElementById("sheet");
+const shut = document.getElementById("shut");
+mural.src = encodeURI(ENDING_FILE[tier]);
+
+function motionOk() {
+  return !!(window.gsap && !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+}
+
+function consumeOpenFlag() {
+  try {
+    const url = new URL(location.href);
+    if (!url.searchParams.has("open")) return;
+    url.searchParams.delete("open");
+    const query = url.searchParams.toString();
+    history.replaceState(null, "", url.pathname + (query ? "?" + query : "") + url.hash);
+  } catch (err) {}
+}
+
+let opened = false;
+function openFromBook() {
+  if (opened) return;
+  opened = true;
+  const root = document.documentElement;
+  consumeOpenFlag();
+  if (!root.classList.contains("opening") || !motionOk()) {
+    root.classList.remove("opening");
+    return;
+  }
+  gsap.fromTo(sheet, {
+    rotationY: 64,
+    opacity: 0.7,
+    transformOrigin: "left center"
+  }, {
+    rotationY: 0,
+    opacity: 1,
+    duration: 0.85,
+    ease: "power3.out",
+    onComplete: () => {
+      gsap.set(sheet, { clearProps: "transform,opacity" });
+      sheet.style.willChange = "auto";
+      root.classList.remove("opening");
+    }
+  });
+}
+
+function begin() {
+  if (mural.decode) mural.decode().then(openFromBook, openFromBook);
+  else openFromBook();
+}
+
+let leaving = false;
+shut.addEventListener("click", () => {
+  if (leaving) return;
+  const href = "index.html?open=1";
+  if (!motionOk()) {
+    location.href = href;
+    return;
+  }
+  leaving = true;
+  sheet.classList.add("is-turning");
+  try { sessionStorage.setItem("open-book", "1"); } catch (err) {}
+  gsap.to(sheet, {
+    rotationY: -112,
+    duration: 0.9,
+    ease: "power2.in",
+    transformOrigin: "left center",
+    onComplete: () => { location.href = href; }
+  });
+});
+
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", begin);
+else begin();
+window.setTimeout(openFromBook, 900);
+</script>
+</body>
+</html>

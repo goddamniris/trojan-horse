@@ -6,7 +6,8 @@
 <title>木马</title>
 <script>
   try {
-    if (sessionStorage.getItem("open-book") === "1" && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const fromBook = sessionStorage.getItem("open-book") === "1" || new URLSearchParams(location.search).get("open") === "1";
+    if (fromBook && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
       document.documentElement.classList.add("opening");
     }
   } catch (err) {}
@@ -40,6 +41,15 @@
     transform-origin: left center;
     transform: rotateY(64deg);
     opacity: 0.7;
+    will-change: transform;
+  }
+  html.leaving { overflow-x: hidden; }
+  html.leaving body {
+    perspective: 2200px;
+    perspective-origin: 8% 46%;
+  }
+  html.leaving .wrap {
+    transform-origin: left center;
     will-change: transform;
   }
 
@@ -320,6 +330,14 @@
       repeating-linear-gradient(90deg, #1a1612 0 1px, transparent 1px 3px),
       repeating-linear-gradient(#1a1612 0 1px, transparent 1px 4px);
     opacity: 0.45;
+  }
+  .scroll.open .sheet {
+    animation: none;
+    clip-path: inset(0 0 0 0);
+  }
+  .scroll.open .roll-r {
+    animation: none;
+    left: calc(100% - 18px);
   }
   @keyframes unfurl { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
   @keyframes roll-r { from { left: 0; } to { left: calc(100% - 18px); } }
@@ -665,6 +683,26 @@ function endingFor(n) {
   if (n === 3 || n === 4) return { tier: "dissolve", line: "壁画开始溶解。归途还在墙上，已经对不齐。" };
   if (n >= 1) return { tier: "broken", line: "原典的结构所剩很少。后来的人很难从这面墙上读回荷马。" };
   return { tier: "noise", line: "墙上只剩噪声。壳还在，这一次传下去的讲述已经换掉。" };
+}
+const ENDING_FILE = {
+  intact: "stills/结局_6原典_intact_v3.jpg",
+  seams: "stills/结局_5-4原典_seams_v1.jpg",
+  dissolve: "stills/结局_3原典_dissolve_v1.jpg",
+  broken: "stills/结局_2-1原典_broken_v1.jpg",
+  noise: "stills/结局_0原典_v1.jpg"
+};
+function endingImage(tier) {
+  return encodeURI(ENDING_FILE[tier] || ENDING_FILE.intact);
+}
+function prefetchEnding(tier) {
+  const href = endingImage(tier);
+  if (document.querySelector('link[data-end="' + tier + '"]')) return;
+  const link = document.createElement("link");
+  link.rel = "prefetch";
+  link.as = "image";
+  link.href = href;
+  link.dataset.end = tier;
+  document.head.appendChild(link);
 }
 
 let cutsData = null;
@@ -1073,7 +1111,42 @@ function paint(i, key, seat) {
   snapToContour(el, seat);
 }
 
+let unfurlAbort = null;
+function endUnfurlListen() {
+  if (unfurlAbort) unfurlAbort.abort();
+  unfurlAbort = null;
+}
+
+let leavingForEnd = false;
+let endTimer = 0;
+function goEnding() {
+  if (leavingForEnd) return;
+  leavingForEnd = true;
+  endUnfurlListen();
+  window.clearTimeout(endTimer);
+  const n = order.filter(item => item.key === "yuandian").length;
+  const href = "ending.html?tier=" + encodeURIComponent(endingFor(n).tier) + "&open=1";
+  const wrap = document.querySelector(".wrap");
+  if (!motionOk() || !wrap) {
+    location.href = href;
+    return;
+  }
+  document.documentElement.classList.add("leaving");
+  const finds = document.getElementById("finds");
+  const veil = document.getElementById("veil");
+  veil.style.transition = "none";
+  gsap.set(wrap, { transformOrigin: "left center" });
+  gsap.timeline({ onComplete: () => { location.href = href; } })
+    .to([finds, veil], { autoAlpha: 0, duration: 0.42, ease: "power2.in" }, 0)
+    .to(wrap, { rotationY: -112, duration: 0.9, ease: "power2.in" }, 0.1);
+}
+
 function closeScroll() {
+  if (order.length >= SLOT_N) {
+    goEnding();
+    return;
+  }
+  endUnfurlListen();
   setBusyState(false);
   pendingTier = null;
   const finds = document.getElementById("finds");
@@ -1106,20 +1179,44 @@ function reveal(beat, key) {
   shut.addEventListener("click", closeScroll);
   piece.append(left, sheet, right, shut);
   finds.replaceChildren(piece);
-  document.getElementById("veil").classList.add("on");
+  const veil = document.getElementById("veil");
+  veil.classList.add("on");
+  endUnfurlListen();
+  unfurlAbort = new AbortController();
   let settled = false;
+  let holding = false;
   let settleTimer = 0;
   const finish = () => {
-    if (settled || !finds.contains(piece)) return;
+    if (settled || holding || !finds.contains(piece)) return;
     settled = true;
     window.clearTimeout(settleTimer);
-    if (pendingTier) finds.classList.add(pendingTier);
+    endUnfurlListen();
+    if (order.length >= SLOT_N) {
+      window.clearTimeout(endTimer);
+      endTimer = window.setTimeout(goEnding, motionOk() ? 680 : 0);
+      return;
+    }
     shut.hidden = false;
+  };
+  const release = () => {
+    window.removeEventListener("pointerup", release);
+    window.removeEventListener("pointercancel", release);
+    holding = false;
+    finish();
+  };
+  const skip = (e) => {
+    if (settled || holding || !finds.contains(piece)) return;
+    if (e.button != null && e.button !== 0) return;
+    finds.classList.add("open");
+    holding = true;
+    window.addEventListener("pointerup", release);
+    window.addEventListener("pointercancel", release);
   };
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) finish();
   else {
     sheet.addEventListener("animationend", finish, { once: true });
     settleTimer = window.setTimeout(finish, 3200);
+    veil.addEventListener("pointerdown", skip, { signal: unfurlAbort.signal });
   }
 }
 
@@ -1139,6 +1236,7 @@ function put(i, piece, seat) {
   const key = piece.key;
   if (order.length === SLOT_N) {
     pendingTier = endingFor(order.filter(item => item.key === "yuandian").length).tier;
+    prefetchEnding(pendingTier);
   }
   window.setTimeout(() => reveal(beat, key), 1100);
 }
@@ -1355,6 +1453,7 @@ function bindShard(btn, piece) {
 }
 
 function reset() {
+  endUnfurlListen();
   order.length = 0;
   Object.keys(filled).forEach(k => delete filled[k]);
   held = null;
@@ -1385,10 +1484,21 @@ document.addEventListener("keydown", e => {
   if (!busy) reset();
 });
 
+function consumeOpenFlag() {
+  try { sessionStorage.removeItem("open-book"); } catch (err) {}
+  try {
+    const url = new URL(location.href);
+    if (!url.searchParams.has("open")) return;
+    url.searchParams.delete("open");
+    const query = url.searchParams.toString();
+    history.replaceState(null, "", url.pathname + (query ? "?" + query : "") + url.hash);
+  } catch (err) {}
+}
+
 function openFromBook() {
   const root = document.documentElement;
+  consumeOpenFlag();
   if (!root.classList.contains("opening")) return;
-  try { sessionStorage.removeItem("open-book"); } catch (err) {}
   const wrap = document.querySelector(".wrap");
   if (!wrap || !motionOk()) {
     root.classList.remove("opening");
