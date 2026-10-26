@@ -162,43 +162,22 @@
   .stage.target-no { outline-color: rgba(42, 40, 38, 0.2); }
   .stage.can-lift { cursor: pointer; }
 
+  .stage.can-lift {
+    outline: 1px dashed rgba(42, 40, 38, 0.35);
+    outline-offset: -2px;
+  }
+
+  /* 只占自己的外接框；空槽由矢量画布绘制。 */
   .part {
     position: absolute;
-    inset: 0;
-    background-size: 100% 100%;
-    background-repeat: no-repeat;
-    image-rendering: auto;
-    transition: filter .2s ease, opacity .2s ease;
+    background: no-repeat 0 0 / 100% 100%;
+    transition: filter .2s ease;
   }
-  .part[data-role="structure"] { opacity: .88; }
   .part.hover {
     filter: brightness(1.12) saturate(1.05);
     z-index: 2;
   }
-  .part[data-state="filled"].hover {
-    filter: brightness(1.08);
-    outline: 1px dashed rgba(42, 40, 38, 0.35);
-    outline-offset: -2px;
-  }
-  .part.landed { animation: land 1.05s ease; }
-  @keyframes land {
-    0% { filter: brightness(1.45); }
-    100% { filter: none; }
-  }
-
-  /* 空槽位就是这匹马本身，分块靠接缝看出来。 */
-  .part[data-state="empty"] {
-    background-color: transparent;
-  }
-
-  .tex-yuandian {
-    background-color: var(--v-yuandian);
-    background-image: none;
-  }
-  .tex-nuolan {
-    background-color: var(--v-nuolan);
-    background-image: none;
-  }
+  .part[data-state="filled"].hover { filter: brightness(1.08); }
 
   .seams-canvas {
     position: absolute;
@@ -241,23 +220,24 @@
   .seq-cell.yuandian.on { background: var(--v-yuandian); }
   .seq-cell.nuolan.on { background: var(--v-nuolan); }
 
+  /* 只渐变透明度：模糊半径逐帧变化很费 GPU，叠上透明度看起来一样。 */
   .veil {
     position: fixed;
     inset: 0;
     z-index: 16;
-    background: rgba(44, 36, 28, 0);
-    backdrop-filter: blur(0);
-    -webkit-backdrop-filter: blur(0);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .6s ease, background .6s ease, backdrop-filter .6s ease, -webkit-backdrop-filter .6s ease;
-  }
-  .veil.on {
-    opacity: 1;
-    pointer-events: auto;
     background: rgba(44, 36, 28, 0.32);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .6s ease, visibility 0s linear .6s;
+  }
+  .veil.on {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity .6s ease;
   }
 
   .scroll {
@@ -296,7 +276,18 @@
     box-shadow: 0 8px 16px rgba(48, 32, 18, 0.28);
   }
   .roll-l { left: 0; }
-  .roll-r { left: 0; animation: roll-r 2.6s cubic-bezier(.22, .7, .2, 1) both; }
+  /* 轨道宽度 = 卷轴宽 - 轴宽，translateX(100%) 正好停在右缘，全程只动 transform。 */
+  .roll-track {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 18px;
+    z-index: 2;
+    pointer-events: none;
+    animation: roll-r 2.6s cubic-bezier(.22, .7, .2, 1) both;
+  }
+  .roll-r { left: 0; }
   .shut {
     position: absolute;
     top: -14px;
@@ -318,31 +309,19 @@
   .shut:active { transform: scale(0.96); }
   .shut[hidden] { display: none; }
   .shut:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-  .scroll.dissolve img { opacity: 0.4; }
-  .scroll.broken img { opacity: 0.22; }
-  .scroll.noise .sheet { position: relative; }
-  .scroll.noise img { opacity: 0.1; }
-  .scroll.noise .sheet::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image:
-      repeating-linear-gradient(90deg, #1a1612 0 1px, transparent 1px 3px),
-      repeating-linear-gradient(#1a1612 0 1px, transparent 1px 4px);
-    opacity: 0.45;
-  }
-  .scroll.open .sheet {
+  .scroll.open .sheet { animation: none; }
+  .scroll.open .roll-track {
     animation: none;
-    clip-path: inset(0 0 0 0);
-  }
-  .scroll.open .roll-r {
-    animation: none;
-    left: calc(100% - 18px);
+    transform: translateX(100%);
   }
   @keyframes unfurl { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
-  @keyframes roll-r { from { left: 0; } to { left: calc(100% - 18px); } }
+  @keyframes roll-r { from { transform: translateX(0); } to { transform: translateX(100%); } }
   @media (prefers-reduced-motion: reduce) {
-    .sheet, .roll-r, .part.landed, .veil { animation: none; transition: none; }
+    .sheet, .veil { animation: none; transition: none; }
+    .roll-track {
+      animation: none;
+      transform: translateX(100%);
+    }
   }
 
   /* 拼块的 z-index 会一直累加，只让它在托盘内部比较，不越过卷轴。 */
@@ -469,14 +448,21 @@
 <div class="veil" id="veil"></div>
 <div class="scroll" id="finds"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-<script src="assets/masks/cuts.js?v=28"></script>
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/masks/horse.js?v=30"></script>
+<script src="assets/endings.js?v=1"></script>
 <script>
-const NATURAL = { w: 649, h: 916 };
-const ASSET_V = "?v=27";
-const REGIONMAP_SRC = "assets/masks/regionmap.png" + ASSET_V;
-const CUTS_SRC = "assets/masks/cuts.json" + ASSET_V;
-const SLOT_N = 7;
+const HORSE = window.HORSE;
+const NATURAL = { w: HORSE.W, h: HORSE.H };
+const BOXES = HORSE.boxes;
+const SLOT_N = Object.keys(BOXES).length;
+const KEYS = ["yuandian", "nuolan"];
+const ASSET_V = "?v=30";
+const SEAT_RATIO = 0.4;
+const SAMPLE_STEP = 4;
+const DRAG_THRESHOLD = 6;
+const REVEAL_DELAY = 1100;
+const HINT_COLOR = { yuandian: "rgba(154, 112, 64, 0.95)", nuolan: "rgba(138, 83, 68, 0.95)" };
 
 const BEATS = [
   { yuandian: "木马进城，夜色里潜入，胜利以荣耀收束。", nuolan: "进城之后是残酷的战斗，奥德修斯颓废。", file: { yuandian: "情节1_特洛伊_原典_v2.jpg", nuolan: "情节1_特洛伊_改编_v1.jpg" } },
@@ -484,566 +470,216 @@ const BEATS = [
   { yuandian: "风袋把船打回去。巨人砸船，只剩一艘。喀耳刻救回被变成猪的人。", nuolan: "剥落。钢铁巨人砸船。变猪，谈判，再变回来。", file: { yuandian: "情节3_回程2_原典_v2.jpg", nuolan: "情节3_回程2_改编_v3.jpg" } },
   { yuandian: "冥界先知。塞壬与蜂蜡。斯库拉吞下六人。", nuolan: "冥界里阿伽门农的亡魂，残酷真相，然后是赎罪的决心。塞壬与斯库拉仍在。", file: { yuandian: "情节4_回程3_原典_v2.jpg", nuolan: "情节4_回程3_改编_v2.jpg" } },
   { yuandian: "赫利俄斯的牛，漂流九天。卡吕普索的七年。费埃克斯人。睡梦中回到伊塔卡。", nuolan: "阿波罗的牛，宙斯发怒。忘忧莲七年。离岛，为救子再回。", file: { yuandian: "情节5_回程4_原典_v3.jpg", nuolan: "情节5_回程4_改编_v2.jpg" } },
-  { yuandian: "珀涅罗珀与子守住城邦。乞丐归来，杀死求婚者，团聚成为传奇。", nuolan: "儿子寻父。父子扮成乞丐同归，杀死求婚者。与妻子自我流放，赎罪。", file: { yuandian: "情节6_伊塔卡_原典_v2.jpg", nuolan: "情节6_伊塔卡_改编_v2.jpg" } },
-  { yuandian: "尾声：史诗合上。下一次讲述，仍从木马的影子开始。", nuolan: "尾声：壳还在。下一次讲述，会不会还认得这匹马。", file: { yuandian: "情节6_伊塔卡_原典_v2.jpg", nuolan: "情节6_伊塔卡_改编_v2.jpg" } }
+  { yuandian: "珀涅罗珀与子守住城邦。乞丐归来，杀死求婚者，团聚成为传奇。", nuolan: "儿子寻父。父子扮成乞丐同归，杀死求婚者。与妻子自我流放，赎罪。", file: { yuandian: "情节6_伊塔卡_原典_v2.jpg", nuolan: "情节6_伊塔卡_改编_v2.jpg" } }
 ];
-const CLIPS = [
-  "polygon(4% 12%, 96% 0, 100% 82%, 8% 100%)",
-  "polygon(0 8%, 92% 0, 100% 70%, 88% 100%, 6% 90%)",
-  "polygon(8% 0, 100% 10%, 94% 100%, 0 86%)",
-  "polygon(0 18%, 80% 0, 100% 40%, 90% 100%, 10% 88%)"
-];
-
-const MARKS = [
-  { i: 1, x: 57.6, y: 23.8 },
-  { i: 2, x: 51.0, y: 16.0 },
-  { i: 3, x: 55.5, y: 40.8 },
-  { i: 4, x: 54.6, y: 54.1 },
-  { i: 4, x: 16.6, y: 51.3 },
-  { i: 5, x: 8.2,  y: 73.0 },
-  { i: 6, x: 34.8, y: 53.3 },
-  { i: 7, x: 79.1, y: 57.5 },
-  { i: 8, x: 23.6, y: 74.8 }
-];
-const STRUCTURE = [];
-
-const BOXES = {
-  1: { x: 208, y: 11, w: 354, h: 356 },
-  2: { x: 207, y: 105, w: 298, h: 290 },
-  3: { x: 47, y: 356, w: 411, h: 223 },
-  4: { x: 343, y: 397, w: 296, h: 377 },
-  5: { x: 151, y: 393, w: 152, h: 193 },
-  6: { x: 62, y: 555, w: 252, h: 350 },
-  7: { x: 9, y: 389, w: 114, h: 515 }
-};
-const FIT = 112;
-const maskImgs = {};
-const pieceImgs = {};
-let bootDone = false;
-function pieceSrc(slot, key) {
-  return "assets/masks/piece_" + key + "_" + slot + ".png" + ASSET_V;
-}
-function frameSrc(slot) {
-  return "assets/masks/frame_" + slot + ".png" + ASSET_V;
-}
-function onMaskLoad() {
-  if (!bootDone || document.body.classList.contains("dragging")) return;
-  renderPile();
-}
-for (let slot = 1; slot <= SLOT_N; slot++) {
-  const img = new Image();
-  img.addEventListener("load", onMaskLoad);
-  img.src = "assets/masks/mask_" + slot + ".png" + ASSET_V;
-  maskImgs[slot] = img;
-}
-["yuandian", "nuolan"].forEach(key => {
-  for (let slot = 1; slot <= SLOT_N; slot++) {
-    const img = new Image();
-    img.addEventListener("load", onMaskLoad);
-    img.src = pieceSrc(slot, key);
-    pieceImgs[key + "_" + slot] = img;
-  }
-});
-
-function shardColor(key) {
-  return key === "yuandian" ? "#e2a04a" : "#3c7f86";
-}
-
-function drawShardSurface(canvas, piece) {
-  const w = canvas.width;
-  const h = canvas.height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  ctx.clearRect(0, 0, w, h);
-  const box = BOXES[piece.slot];
-  const scale = w / box.w;
-  const pimg = pieceImgs[piece.key + "_" + piece.slot];
-  if (pimg && pimg.naturalWidth) {
-    ctx.drawImage(pimg, -box.x * scale, -box.y * scale, NATURAL.w * scale, NATURAL.h * scale);
-    return;
-  }
-  const img = maskImgs[piece.slot];
-  if (img && img.naturalWidth) {
-    ctx.drawImage(img, -box.x * scale, -box.y * scale, NATURAL.w * scale, NATURAL.h * scale);
-    ctx.globalCompositeOperation = "source-in";
-    ctx.fillStyle = shardColor(piece.key);
-    ctx.fillRect(0, 0, w, h);
-  } else {
-    ctx.fillStyle = shardColor(piece.key);
-    ctx.fillRect(0, 0, w, h);
-  }
-}
-
-function mountShardSurface(btn, piece) {
-  // 按棋盘比例出图，拖到马身上放大时不糊。
-  const box = BOXES[piece.slot];
-  const res = Math.max(piece.scale, boardScale()) * (window.devicePixelRatio || 1);
-  const w = Math.max(2, Math.round(box.w * res));
-  const h = Math.max(2, Math.round(box.h * res));
-  const canvas = document.createElement("canvas");
-  canvas.className = "shard-surface";
-  canvas.width = w;
-  canvas.height = h;
-  btn.replaceChildren(canvas);
-  const paint = () => drawShardSurface(canvas, piece);
-  paint();
-  const pimg = pieceImgs[piece.key + "_" + piece.slot];
-  const mimg = maskImgs[piece.slot];
-  if (pimg && !pimg.naturalWidth) pimg.addEventListener("load", paint);
-  else if (mimg && !mimg.naturalWidth) mimg.addEventListener("load", paint);
-}
-
-let held = null;
-let busy = false;
-let zTop = 12;
-let pendingTier = null;
-const filled = {};
-const order = [];
-const partEls = {};
-let shards = [];
 
 const stage = document.getElementById("stage");
 const boardEl = document.getElementById("board");
+const wrap = document.querySelector(".wrap");
+const sequence = document.getElementById("sequence");
+const veil = document.getElementById("veil");
+const finds = document.getElementById("finds");
 const piles = {
   yuandian: document.getElementById("pileYuandian"),
   nuolan: document.getElementById("pileNuolan")
 };
-const sequence = document.getElementById("sequence");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-function pileFor(key) {
-  return piles[key] || piles.yuandian;
+let held = null;
+let busy = false;
+let dragging = false;
+let zTop = 0;
+let shards = [];
+let hovered = 0;
+let stageMode = "";
+let revealTimer = 0;
+const filled = {};
+const order = [];
+const partEls = {};
+
+function motionOk() {
+  return !!window.gsap && !reduceMotion.matches;
 }
 
-function allShardEls() {
-  return [...piles.yuandian.querySelectorAll(".shard"), ...piles.nuolan.querySelectorAll(".shard")];
+function pixelRatio() {
+  return Math.min(3, window.devicePixelRatio || 1);
 }
 
-function buildSequence() {
-  sequence.replaceChildren();
-  for (let n = 0; n < SLOT_N; n++) {
-    const cell = document.createElement("span");
-    cell.className = "seq-cell";
-    sequence.appendChild(cell);
+function stageRect() {
+  return stage.getBoundingClientRect();
+}
+
+function scaleOf(rect) {
+  return rect.width > 0 ? rect.width / NATURAL.w : 1;
+}
+
+function clamp01(v) {
+  return Math.min(1, Math.max(0, v));
+}
+
+function shuffle(list) {
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
   }
+  return list;
 }
 
-function updateSequence() {
-  [...sequence.children].forEach((cell, n) => {
-    cell.className = "seq-cell";
-    if (n < order.length) cell.classList.add("on", order[n].key);
-  });
-}
-
-function setBusyState(on) {
-  busy = on;
-  document.body.classList.toggle("is-busy", on);
-}
-
-function rejectBoard() {
-  boardEl.classList.remove("reject");
-  void boardEl.offsetWidth;
-  boardEl.classList.add("reject");
-  window.setTimeout(() => boardEl.classList.remove("reject"), 450);
-}
-
-let regionCtx = null;
-const regionImg = new Image();
-let regionLabels = null;
-regionImg.onload = () => {
-  const c = document.createElement("canvas");
-  c.width = NATURAL.w;
-  c.height = NATURAL.h;
-  regionCtx = c.getContext("2d", { willReadFrequently: true });
-  regionCtx.drawImage(regionImg, 0, 0);
-  const data = regionCtx.getImageData(0, 0, NATURAL.w, NATURAL.h).data;
-  regionLabels = new Uint8Array(NATURAL.w * NATURAL.h);
-  for (let i = 0; i < regionLabels.length; i++) {
-    regionLabels[i] = data[i * 4 + 3] > 8 ? data[i * 4] : 0;
-  }
-};
-regionImg.src = REGIONMAP_SRC;
-
-function regionAt(clientX, clientY, stageRect) {
-  if (!regionLabels) return 0;
-  const r = stageRect || stage.getBoundingClientRect();
-  if (clientX < r.left || clientX > r.right || clientY < r.top || clientY > r.bottom) return 0;
-  const x = Math.floor((clientX - r.left) / r.width * NATURAL.w);
-  const y = Math.floor((clientY - r.top) / r.height * NATURAL.h);
-  if (x < 0 || y < 0 || x >= NATURAL.w || y >= NATURAL.h) return 0;
-  return regionLabels[y * NATURAL.w + x];
-}
 const isSlot = i => i >= 1 && i <= SLOT_N;
+
+function countYuandian() {
+  return order.filter(item => item.key === "yuandian").length;
+}
 
 function stillURL(beat, key) {
   return encodeURI("stills/" + BEATS[beat].file[key]);
 }
-function endingFor(n) {
-  if (n === SLOT_N) return { tier: "intact", line: "壁画连成一条归途。下一个读到的，仍是完整的史诗。" };
-  if (n >= 5) return { tier: "seams", line: "接缝露出来了。故事还在，只是不再严丝合缝。" };
-  if (n === 3 || n === 4) return { tier: "dissolve", line: "壁画开始溶解。归途还在墙上，已经对不齐。" };
-  if (n >= 1) return { tier: "broken", line: "原典的结构所剩很少。后来的人很难从这面墙上读回荷马。" };
-  return { tier: "noise", line: "墙上只剩噪声。壳还在，这一次传下去的讲述已经换掉。" };
-}
-const ENDING_FILE = {
-  intact: "stills/结局_6原典_intact_v3.jpg",
-  seams: "stills/结局_5-4原典_seams_v1.jpg",
-  dissolve: "stills/结局_3原典_dissolve_v1.jpg",
-  broken: "stills/结局_2-1原典_broken_v1.jpg",
-  noise: "stills/结局_0原典_v1.jpg"
-};
-function endingImage(tier) {
-  return encodeURI(ENDING_FILE[tier] || ENDING_FILE.intact);
-}
+
 function prefetchEnding(tier) {
-  const href = endingImage(tier);
   if (document.querySelector('link[data-end="' + tier + '"]')) return;
   const link = document.createElement("link");
   link.rel = "prefetch";
-  link.as = "image";
-  link.href = href;
+  link.href = endingImage(tier);
   link.dataset.end = tier;
   document.head.appendChild(link);
 }
 
-let cutsData = null;
-let seamsCanvas = null;
-let hintCanvas = null;
-let hintState = "";
-let hintTween = null;
-const SEAT_RATIO = 0.4;
+/* 分区表：点击检测、残片实心判断、落位覆盖率都只查这一张表，不读画布像素。 */
 
-function buildStage() {
-  Array.from({ length: SLOT_N }, (_, k) => k + 1).forEach(i => {
-    const el = document.createElement("div");
-    el.className = "part";
-    el.dataset.part = i;
-    // 拼块/空槽 PNG 自带柔边透明，不再套一层 CSS mask（会把柔边裁成硬齿）。
-    el.style.webkitMaskImage = "none";
-    el.style.maskImage = "none";
-    // 空槽填充由矢量 canvas 绘制，避免 PNG 像素阶梯外沿
-    el.style.backgroundImage = "none";
-    el.style.backgroundSize = "100% 100%";
-    el.style.backgroundRepeat = "no-repeat";
-    el.dataset.state = "empty";
-    stage.appendChild(el);
-    partEls[i] = el;
-  });
-  seamsCanvas = document.createElement("canvas");
-  seamsCanvas.className = "seams-canvas";
-  seamsCanvas.setAttribute("aria-hidden", "true");
-  hintCanvas = document.createElement("canvas");
-  hintCanvas.className = "slot-hint";
-  hintCanvas.setAttribute("aria-hidden", "true");
-  stage.appendChild(hintCanvas);
-  stage.appendChild(seamsCanvas);
-  paintSeams();
-}
+const regionLabels = decodeRuns(HORSE.runs, NATURAL.w * NATURAL.h);
 
-function paintSeams() {
-  if (!seamsCanvas || !cutsData) return;
-  const r = stage.getBoundingClientRect();
-  if (r.width < 2 || r.height < 2) return;
-  const dpr = Math.min(3, window.devicePixelRatio || 1);
-  const w = Math.round(r.width * dpr);
-  const h = Math.round(r.height * dpr);
-  if (seamsCanvas.width !== w || seamsCanvas.height !== h) {
-    seamsCanvas.width = w;
-    seamsCanvas.height = h;
+function decodeRuns(runs, size) {
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (let i = 0; i < runs.length; i += 2) {
+    const n = runs[i + 1];
+    if (runs[i]) out.fill(runs[i], at, at + n);
+    at += n;
   }
-  const ctx = seamsCanvas.getContext("2d");
-  if (!ctx) return;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, w, h);
-  const sx = w / cutsData.W;
-  const sy = h / cutsData.H;
-  // 填充 + 描边共用同一套平滑区域轮廓，避免填描错位造成假锯齿/细缝
-  const regions = cutsData.regions || {};
-  ctx.fillStyle = "rgba(138, 116, 88, 0.46)";
-  for (let i = 1; i <= SLOT_N; i++) {
-    if (filled[i]) continue;
-    (regions[String(i)] || []).forEach(pts => {
-      if (traceSmooth(ctx, pts, sx, sy, true)) ctx.fill();
-    });
-  }
-  const lw = Math.max(1.35 * dpr, (cutsData.stroke || 3.2) * sx * 0.55);
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.strokeStyle = "rgba(44, 36, 28, 0.92)";
-  ctx.lineWidth = lw;
-  for (let i = 1; i <= SLOT_N; i++) {
-    (regions[String(i)] || []).forEach(pts => {
-      if (traceSmooth(ctx, pts, sx, sy, true)) ctx.stroke();
-    });
-  }
+  return out;
 }
 
-function traceSmooth(ctx, pts, sx, sy, closed) {
-  if (!pts || pts.length < 2) return false;
-  const xs = pts.map(p => p[0] * sx);
-  const ys = pts.map(p => p[1] * sy);
-  const n = xs.length;
-  ctx.beginPath();
-  if (!closed || n < 3) {
-    ctx.moveTo(xs[0], ys[0]);
-    for (let i = 1; i < n - 1; i++) {
-      ctx.quadraticCurveTo(xs[i], ys[i], (xs[i] + xs[i + 1]) / 2, (ys[i] + ys[i + 1]) / 2);
-    }
-    ctx.lineTo(xs[n - 1], ys[n - 1]);
-  } else {
-    ctx.moveTo((xs[n - 1] + xs[0]) / 2, (ys[n - 1] + ys[0]) / 2);
-    for (let i = 0; i < n; i++) {
-      const j = (i + 1) % n;
-      ctx.quadraticCurveTo(xs[i], ys[i], (xs[i] + xs[j]) / 2, (ys[i] + ys[j]) / 2);
-    }
-    ctx.closePath();
-  }
-  return true;
+function labelAt(x, y) {
+  x = Math.floor(x);
+  y = Math.floor(y);
+  if (x < 0 || y < 0 || x >= NATURAL.w || y >= NATURAL.h) return 0;
+  return regionLabels[y * NATURAL.w + x];
 }
 
-function motionOk() {
-  return !!(window.gsap && !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+function regionAt(clientX, clientY, rect = stageRect()) {
+  if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return 0;
+  return labelAt(
+    (clientX - rect.left) / rect.width * NATURAL.w,
+    (clientY - rect.top) / rect.height * NATURAL.h
+  );
 }
 
-function drawSlotHint(slot, key) {
-  if (!hintCanvas || !cutsData) return;
-  const r = stage.getBoundingClientRect();
-  if (r.width < 2 || r.height < 2) return;
-  const dpr = Math.min(3, window.devicePixelRatio || 1);
-  const w = Math.round(r.width * dpr);
-  const h = Math.round(r.height * dpr);
-  if (hintCanvas.width !== w || hintCanvas.height !== h) {
-    hintCanvas.width = w;
-    hintCanvas.height = h;
-  }
-  const ctx = hintCanvas.getContext("2d");
-  if (!ctx) return;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, w, h);
-  const sx = w / cutsData.W;
-  const sy = h / cutsData.H;
-  const color = key === "yuandian" ? "rgba(154, 112, 64, 0.95)" : "rgba(138, 83, 68, 0.95)";
-  ctx.fillStyle = color;
-  ctx.strokeStyle = color;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.lineWidth = Math.max(16 * dpr, 18);
-  (cutsData.regions[String(slot)] || []).forEach(pts => {
-    if (!traceSmooth(ctx, pts, sx, sy, true)) return;
-    ctx.fill();
-    ctx.stroke();
-  });
-}
-
-function showSlotHint(slot, key) {
-  const id = slot + ":" + key;
-  if (hintState === id) return;
-  hintState = id;
-  drawSlotHint(slot, key);
-  hintCanvas.style.willChange = "opacity";
-  if (!motionOk()) {
-    hintCanvas.style.opacity = "0.72";
-    return;
-  }
-  if (hintTween) hintTween.kill();
-  hintTween = gsap.fromTo(hintCanvas, { opacity: 0.38 }, {
-    opacity: 0.78,
-    duration: 0.68,
-    ease: "sine.inOut",
-    yoyo: true,
-    repeat: -1
-  });
-}
-
-function hideSlotHint() {
-  if (!hintState) return;
-  hintState = "";
-  if (hintTween) { hintTween.kill(); hintTween = null; }
-  if (!window.gsap) {
-    hintCanvas.style.opacity = "0";
-    hintCanvas.style.willChange = "auto";
-    return;
-  }
-  gsap.killTweensOf(hintCanvas);
-  gsap.to(hintCanvas, {
-    opacity: 0,
-    duration: motionOk() ? 0.22 : 0,
-    ease: "power1.out",
-    onComplete: () => { hintCanvas.style.willChange = "auto"; }
-  });
-}
-
-function flashSlot(slot, key) {
-  hintState = "";
-  if (hintTween) { hintTween.kill(); hintTween = null; }
-  drawSlotHint(slot, key);
-  if (!motionOk()) {
-    hintCanvas.style.opacity = "0";
-    hintCanvas.style.willChange = "auto";
-    return;
-  }
-  hintCanvas.style.willChange = "opacity";
-  gsap.killTweensOf(hintCanvas);
-  gsap.fromTo(hintCanvas, { opacity: 0.85 }, {
-    opacity: 0,
-    duration: 0.62,
-    ease: "power2.out",
-    onComplete: () => { hintCanvas.style.willChange = "auto"; }
-  });
-}
-
-function snapToContour(el, seat) {
-  const k = boardScale();
-  const x = seat ? seat.ox * k : 0;
-  const y = seat ? seat.oy * k : 0;
-  if (!motionOk() || (Math.abs(x) < 0.6 && Math.abs(y) < 0.6)) return;
-  el.style.willChange = "transform";
-  gsap.killTweensOf(el);
-  gsap.fromTo(el, { x: x, y: y }, {
-    x: 0,
-    y: 0,
-    duration: 0.48,
-    ease: "power3.out",
-    onComplete: () => {
-      el.style.willChange = "auto";
-      gsap.set(el, { clearProps: "transform" });
-    }
-  });
-}
-
-function applySeat(el, piece) {
-  const k = boardScale();
-  el.style.backgroundPosition = ((piece.ox || 0) * k) + "px " + ((piece.oy || 0) * k) + "px";
-}
-
-function syncSeats() {
-  for (let i = 1; i <= SLOT_N; i++) {
-    if (!filled[i] || !partEls[i]) continue;
-    const piece = shards.find(s => s.slot === i && s.placed);
-    if (piece) applySeat(partEls[i], piece);
-  }
-  if (hintState) {
-    const parts = hintState.split(":");
-    drawSlotHint(Number(parts[0]), parts[1]);
-  }
-}
-
-// 不透明像素有多少落在自己的框里。框是不规则的，不能只看外接矩形中心。
-function cacheAlpha(btn) {
-  const canvas = btn.firstElementChild;
-  if (!canvas || btn._alpha) return;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  let data = null;
-  try { data = ctx.getImageData(0, 0, canvas.width, canvas.height).data; } catch (err) { return; }
-  const n = 7;
-  const cells = new Array(n * n);
-  for (let iy = 0; iy < n; iy++) {
-    for (let ix = 0; ix < n; ix++) {
-      const px = Math.min(canvas.width - 1, Math.floor((ix + 0.5) / n * canvas.width));
-      const py = Math.min(canvas.height - 1, Math.floor((iy + 0.5) / n * canvas.height));
-      cells[iy * n + ix] = data[(py * canvas.width + px) * 4 + 3] > 24;
+const slotSamples = {};
+for (let slot = 1; slot <= SLOT_N; slot++) {
+  const box = BOXES[slot];
+  const pts = [];
+  for (let y = box.y + (SAMPLE_STEP >> 1); y < box.y + box.h; y += SAMPLE_STEP) {
+    for (let x = box.x + (SAMPLE_STEP >> 1); x < box.x + box.w; x += SAMPLE_STEP) {
+      if (regionLabels[y * NATURAL.w + x] === slot) pts.push(x, y);
     }
   }
-  btn._alpha = cells;
+  slotSamples[slot] = Int16Array.from(pts);
 }
 
-function coverRatio(btn, piece) {
-  const cells = btn._alpha;
-  const r = btn.getBoundingClientRect();
-  const stageR = stage.getBoundingClientRect();
-  if (!cells || r.width < 2 || r.height < 2) return 0;
-  const n = 7;
+// off 是残片相对正确位置的偏移（自然坐标）。
+function coverRatio(piece, off) {
+  const pts = slotSamples[piece.slot];
+  if (!pts.length) return 0;
+  const dx = Math.round(off.ox);
+  const dy = Math.round(off.oy);
   let hit = 0;
-  let tot = 0;
-  for (let i = 0; i < cells.length; i++) {
-    if (!cells[i]) continue;
-    tot++;
-    const ix = i % n;
-    const iy = (i / n) | 0;
-    const x = r.left + (ix + 0.5) / n * r.width;
-    const y = r.top + (iy + 0.5) / n * r.height;
-    if (regionAt(x, y, stageR) === piece.slot) hit++;
+  for (let i = 0; i < pts.length; i += 2) {
+    if (labelAt(pts[i] + dx, pts[i + 1] + dy) === piece.slot) hit++;
   }
-  return tot ? hit / tot : 0;
+  return hit / (pts.length / 2);
 }
 
-function seatOffset(btn, piece) {
-  const stageR = stage.getBoundingClientRect();
-  const br = btn.getBoundingClientRect();
-  const k = stageR.width / NATURAL.w;
-  const box = BOXES[piece.slot];
-  return {
-    ox: ((br.left - stageR.left) - box.x * k) / k,
-    oy: ((br.top - stageR.top) - box.y * k) / k
-  };
+/* 残片图 */
+
+function pieceSrc(slot, key) {
+  return "assets/masks/piece_" + key + "_" + slot + ".png" + ASSET_V;
 }
 
-function syncSeatHint(piece, btn) {
-  if (filled[piece.slot] || coverRatio(btn, piece) < SEAT_RATIO) hideSlotHint();
-  else showSlotHint(piece.slot, piece.key);
-}
-
-function scatter() {
-  const items = [];
+const pieceImgs = {};
+KEYS.forEach(key => {
   for (let slot = 1; slot <= SLOT_N; slot++) {
-    items.push({ slot, key: "yuandian" });
-    items.push({ slot, key: "nuolan" });
+    const img = new Image();
+    img.decoding = "async";
+    img.src = pieceSrc(slot, key);
+    pieceImgs[key + "_" + slot] = img;
+    const ready = () => paintShard(shards.find(s => s.slot === slot && s.key === key));
+    if (img.decode) img.decode().then(ready, ready);
+    else img.addEventListener("load", ready, { once: true });
   }
-  // 同侧内部打乱，左右版本不混。
-  ["yuandian", "nuolan"].forEach(key => {
-    const side = items.filter(item => item.key === key);
-    for (let i = side.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const t = side[i]; side[i] = side[j]; side[j] = t;
+});
+
+function paintShard(piece) {
+  if (!piece || !piece.el) return;
+  const img = pieceImgs[piece.key + "_" + piece.slot];
+  if (!img.complete || !img.naturalWidth) return;
+  const canvas = piece.el.firstElementChild;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+}
+
+// 按「棋盘比例 × 像素比」出图，拖到马身上放大时不糊。
+function sizeSurface(piece, k) {
+  const canvas = piece.el.firstElementChild;
+  const box = BOXES[piece.slot];
+  const res = Math.max(piece.scale, k) * pixelRatio();
+  const w = Math.max(2, Math.round(box.w * res));
+  const h = Math.max(2, Math.round(box.h * res));
+  if (canvas.width === w && canvas.height === h) return;
+  canvas.width = w;
+  canvas.height = h;
+  paintShard(piece);
+}
+
+let surfaceTimer = 0;
+function queueSurfaceSizes() {
+  window.clearTimeout(surfaceTimer);
+  surfaceTimer = window.setTimeout(() => {
+    if (dragging) {
+      queueSurfaceSizes();
+      return;
     }
-    side.forEach((item, n) => {
-      item.rx = Math.min(1, Math.max(0, 0.5 + (Math.random() - 0.5) * 0.7));
-      item.ry = Math.min(1, Math.max(0, (n + 0.5) / side.length + (Math.random() - 0.5) * 0.08));
+    const k = scaleOf(stageRect());
+    shards.forEach(piece => {
+      if (!piece.placed && piece.el) sizeSurface(piece, k);
     });
-  });
-  shards = items.map((item, id) => ({
-    id, slot: item.slot, key: item.key, placed: false,
-    rx: item.rx, ry: item.ry,
-    rot: Math.random() * 50 - 25,
-    z: id + 1
-  }));
-  zTop = shards.length;
+  }, 160);
 }
 
-function pose(btn, piece) {
-  const rot = held === piece.id ? 0 : piece.rot;
-  const sc = held === piece.id ? 1.06 : 1;
-  btn.style.transform = "rotate(" + rot + "deg) scale(" + sc + ")";
+function shardEl(piece) {
+  if (piece.el) return piece.el;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "shard " + piece.key;
+  btn.setAttribute("aria-label", piece.key === "yuandian" ? "原典残片" : "改编残片");
+  const canvas = document.createElement("canvas");
+  canvas.className = "shard-surface";
+  btn.appendChild(canvas);
+  piece.el = btn;
+  bindShard(btn, piece);
+  return btn;
 }
 
-function raise(btn, piece) {
-  piece.z = ++zTop;
-  btn.style.zIndex = String(piece.z);
-  btn.style.transform = "rotate(0deg) scale(1.08)";
-}
+/* 托盘 */
 
-function boardScale() {
-  const w = stage.getBoundingClientRect().width;
-  return w > 0 ? w / NATURAL.w : 1;
-}
+const MAX_BOX = Object.values(BOXES).reduce(
+  (m, b) => ({ w: Math.max(m.w, b.w), h: Math.max(m.h, b.h) }),
+  { w: 0, h: 0 }
+);
 
 // 所有残片共用一个比例，大小关系与马身一致。
-function pileScale(w, h) {
-  let maxW = 0, maxH = 0;
-  Object.values(BOXES).forEach(b => {
-    maxW = Math.max(maxW, b.w);
-    maxH = Math.max(maxH, b.h);
-  });
-  return Math.min(boardScale() * 0.62, (w * 0.98) / maxW, (h * 0.55) / maxH);
-}
-
-function metricsFor(piece, scale) {
-  const box = BOXES[piece.slot];
-  return {
-    dw: box.w * scale,
-    dh: box.h * scale,
-    scale
-  };
+function pileScale(w, h, k) {
+  return Math.min(k * 0.62, (w * 0.98) / MAX_BOX.w, (h * 0.55) / MAX_BOX.h);
 }
 
 function measurePile(pileEl) {
@@ -1056,84 +692,347 @@ function measurePile(pileEl) {
   return { w, h };
 }
 
-function layoutPile() {
-  const scales = {};
-  Object.keys(piles).forEach(key => {
-    const { w, h } = measurePile(piles[key]);
-    scales[key] = { w, h, scale: pileScale(w, h) };
-  });
+function scatter() {
   shards.forEach(piece => {
-    if (piece.placed) return;
-    const side = scales[piece.key];
-    const m = metricsFor(piece, side.scale);
-    piece.dw = m.dw;
-    piece.dh = m.dh;
-    piece.scale = m.scale;
-    const slackX = Math.max(0, side.w - m.dw);
-    const slackY = Math.max(0, side.h - m.dh);
-    piece.px = piece.rx * slackX;
-    piece.py = piece.ry * slackY;
+    if (piece.el) piece.el.remove();
   });
+  const next = [];
+  // 同侧内部打乱，左右版本不混。
+  KEYS.forEach(key => {
+    shuffle(Array.from({ length: SLOT_N }, (_, i) => i + 1)).forEach((slot, n) => {
+      next.push({
+        id: next.length,
+        slot,
+        key,
+        placed: false,
+        el: null,
+        sized: false,
+        rx: clamp01(0.5 + (Math.random() - 0.5) * 0.7),
+        ry: clamp01((n + 0.5) / SLOT_N + (Math.random() - 0.5) * 0.08),
+        rot: Math.random() * 50 - 25,
+        z: next.length + 1
+      });
+    });
+  });
+  shards = next;
+  zTop = shards.length;
 }
 
+function pose(btn, piece) {
+  btn.style.transform = held === piece
+    ? "rotate(0deg) scale(1.06)"
+    : "rotate(" + piece.rot + "deg) scale(1)";
+}
+
+function raise(btn, piece) {
+  piece.z = ++zTop;
+  btn.style.zIndex = String(piece.z);
+  btn.style.transform = "rotate(0deg) scale(1.08)";
+}
+
+// 先读完所有尺寸再统一写样式，避免读写交错反复排版。
 function renderPile() {
-  layoutPile();
-  Object.values(piles).forEach(pileEl => pileEl.replaceChildren());
+  const k = scaleOf(stageRect());
+  const sides = {};
+  KEYS.forEach(key => {
+    const { w, h } = measurePile(piles[key]);
+    sides[key] = { w, h, scale: pileScale(w, h, k) };
+  });
   shards.forEach(piece => {
-    if (piece.placed) return;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "shard " + piece.key + (held === piece.id ? " held" : "");
-    btn.style.left = piece.px + "px";
-    btn.style.top = piece.py + "px";
-    btn.style.width = piece.dw + "px";
-    btn.style.height = piece.dh + "px";
-    btn.style.zIndex = String(piece.z);
-    mountShardSurface(btn, piece);
-    btn.setAttribute("aria-pressed", held === piece.id ? "true" : "false");
-    btn.setAttribute("aria-label", piece.key === "yuandian" ? "原典残片" : "改编残片");
-    pileFor(piece.key).appendChild(btn);
+    const btn = shardEl(piece);
+    if (piece.placed) {
+      btn.remove();
+      return;
+    }
+    const side = sides[piece.key];
+    const box = BOXES[piece.slot];
+    piece.scale = side.scale;
+    piece.dw = box.w * side.scale;
+    piece.dh = box.h * side.scale;
+    const pile = piles[piece.key];
+    if (btn.parentElement !== pile) pile.appendChild(btn);
+    const s = btn.style;
+    s.position = "";
+    s.transition = "";
+    s.left = piece.rx * Math.max(0, side.w - piece.dw) + "px";
+    s.top = piece.ry * Math.max(0, side.h - piece.dh) + "px";
+    s.width = piece.dw + "px";
+    s.height = piece.dh + "px";
+    s.zIndex = String(piece.z);
+    btn.classList.toggle("held", held === piece);
+    btn.setAttribute("aria-pressed", String(held === piece));
     pose(btn, piece);
-    bindShard(btn, piece);
+    if (!piece.sized) {
+      piece.sized = true;
+      sizeSurface(piece, k);
+    }
+  });
+  queueSurfaceSizes();
+}
+
+/* 棋盘 */
+
+let seamsCanvas = null;
+let hintCanvas = null;
+let hintSlot = 0;
+let hintKey = "";
+let hintTween = null;
+const regionPaths = {};
+
+function makeLayer(className) {
+  const canvas = document.createElement("canvas");
+  canvas.className = className;
+  canvas.setAttribute("aria-hidden", "true");
+  stage.appendChild(canvas);
+  return canvas;
+}
+
+function buildStage() {
+  for (let slot = 1; slot <= SLOT_N; slot++) {
+    const box = BOXES[slot];
+    const el = document.createElement("div");
+    el.className = "part";
+    el.dataset.part = slot;
+    el.dataset.state = "empty";
+    el.style.left = box.x / NATURAL.w * 100 + "%";
+    el.style.top = box.y / NATURAL.h * 100 + "%";
+    el.style.width = box.w / NATURAL.w * 100 + "%";
+    el.style.height = box.h / NATURAL.h * 100 + "%";
+    stage.appendChild(el);
+    partEls[slot] = el;
+  }
+  hintCanvas = makeLayer("slot-hint");
+  seamsCanvas = makeLayer("seams-canvas");
+}
+
+// 相邻点中点为端点、原点为控制点的二次曲线，闭合成平滑轮廓。只建一次。
+function smoothPath(pts) {
+  const path = new Path2D();
+  const n = pts.length;
+  if (n < 3) return path;
+  path.moveTo((pts[n - 1][0] + pts[0][0]) / 2, (pts[n - 1][1] + pts[0][1]) / 2);
+  for (let i = 0; i < n; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % n];
+    path.quadraticCurveTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+  }
+  path.closePath();
+  return path;
+}
+
+function pathsFor(slot) {
+  if (!regionPaths[slot]) regionPaths[slot] = (HORSE.regions[slot] || []).map(smoothPath);
+  return regionPaths[slot];
+}
+
+// 画布贴合舞台并换算到自然坐标，线宽要除回 s。
+function fitLayer(canvas, rect) {
+  const dpr = pixelRatio();
+  const w = Math.round(rect.width * dpr);
+  const h = Math.round(rect.height * dpr);
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
+  }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const s = w / NATURAL.w;
+  ctx.setTransform(s, 0, 0, h / NATURAL.h, 0, 0);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  return { ctx, s, dpr };
+}
+
+function paintSeams(rect = stageRect()) {
+  if (!seamsCanvas || rect.width < 2 || rect.height < 2) return;
+  const { ctx, s, dpr } = fitLayer(seamsCanvas, rect);
+  ctx.fillStyle = "rgba(138, 116, 88, 0.46)";
+  for (let slot = 1; slot <= SLOT_N; slot++) {
+    if (!filled[slot]) pathsFor(slot).forEach(p => ctx.fill(p));
+  }
+  ctx.strokeStyle = "rgba(44, 36, 28, 0.92)";
+  ctx.lineWidth = Math.max(1.35 * dpr, HORSE.stroke * s * 0.55) / s;
+  for (let slot = 1; slot <= SLOT_N; slot++) {
+    pathsFor(slot).forEach(p => ctx.stroke(p));
+  }
+}
+
+function drawSlotHint(slot, key, rect = stageRect()) {
+  if (rect.width < 2 || rect.height < 2) return;
+  const { ctx, s, dpr } = fitLayer(hintCanvas, rect);
+  ctx.fillStyle = HINT_COLOR[key];
+  ctx.strokeStyle = HINT_COLOR[key];
+  ctx.lineWidth = Math.max(16 * dpr, 18) / s;
+  pathsFor(slot).forEach(p => {
+    ctx.fill(p);
+    ctx.stroke(p);
   });
 }
 
-function paint(i, key, seat) {
-  const el = partEls[i];
+function showSlotHint(slot, key) {
+  if (hintSlot === slot && hintKey === key) return;
+  hintSlot = slot;
+  hintKey = key;
+  drawSlotHint(slot, key);
+  hintCanvas.style.willChange = "opacity";
+  if (!motionOk()) {
+    hintCanvas.style.opacity = "0.72";
+    return;
+  }
+  gsap.killTweensOf(hintCanvas);
+  hintTween = gsap.fromTo(hintCanvas, { opacity: 0.38 }, {
+    opacity: 0.78,
+    duration: 0.68,
+    ease: "sine.inOut",
+    yoyo: true,
+    repeat: -1
+  });
+}
+
+function hideSlotHint() {
+  if (!hintSlot) return;
+  hintSlot = 0;
+  hintKey = "";
+  if (hintTween) { hintTween.kill(); hintTween = null; }
+  if (!motionOk()) {
+    hintCanvas.style.opacity = "0";
+    hintCanvas.style.willChange = "auto";
+    return;
+  }
+  gsap.to(hintCanvas, {
+    opacity: 0,
+    duration: 0.22,
+    ease: "power1.out",
+    onComplete: () => { hintCanvas.style.willChange = "auto"; }
+  });
+}
+
+function flashSlot(slot, key) {
+  hintSlot = 0;
+  hintKey = "";
+  if (hintTween) { hintTween.kill(); hintTween = null; }
+  if (!motionOk()) {
+    hintCanvas.style.opacity = "0";
+    hintCanvas.style.willChange = "auto";
+    return;
+  }
+  drawSlotHint(slot, key);
+  hintCanvas.style.willChange = "opacity";
+  gsap.killTweensOf(hintCanvas);
+  gsap.fromTo(hintCanvas, { opacity: 0.85 }, {
+    opacity: 0,
+    duration: 0.62,
+    ease: "power2.out",
+    onComplete: () => { hintCanvas.style.willChange = "auto"; }
+  });
+}
+
+function snapToContour(el, seat) {
+  const k = scaleOf(stageRect());
+  const x = seat ? seat.ox * k : 0;
+  const y = seat ? seat.oy * k : 0;
+  if (!motionOk() || (Math.abs(x) < 0.6 && Math.abs(y) < 0.6)) return;
+  el.style.willChange = "transform";
+  gsap.killTweensOf(el);
+  gsap.fromTo(el, { x, y }, {
+    x: 0,
+    y: 0,
+    duration: 0.48,
+    ease: "power3.out",
+    onComplete: () => {
+      el.style.willChange = "auto";
+      gsap.set(el, { clearProps: "transform" });
+    }
+  });
+}
+
+function paint(slot, key, seat) {
+  const el = partEls[slot];
   el.dataset.state = "filled";
   el.dataset.fill = key;
-  el.style.backgroundImage = `url("${pieceSrc(i, key)}")`;
-  el.style.backgroundSize = "100% 100%";
-  el.style.backgroundPosition = "0px 0px";
-  el.classList.remove("tex-yuandian", "tex-nuolan", "landed");
+  el.style.backgroundImage = 'url("' + pieceSrc(slot, key) + '")';
   paintSeams();
-  flashSlot(i, key);
+  flashSlot(slot, key);
   snapToContour(el, seat);
 }
 
+function clearPart(slot) {
+  const el = partEls[slot];
+  el.dataset.state = "empty";
+  delete el.dataset.fill;
+  el.style.backgroundImage = "";
+  if (window.gsap) {
+    gsap.killTweensOf(el);
+    gsap.set(el, { clearProps: "transform" });
+  }
+  el.style.willChange = "auto";
+}
+
+/* 窗口或托盘尺寸变化：合并到下一帧统一处理。 */
+
+let layoutFrame = 0;
+function scheduleLayout() {
+  if (layoutFrame) return;
+  layoutFrame = window.requestAnimationFrame(() => {
+    layoutFrame = 0;
+    const rect = stageRect();
+    paintSeams(rect);
+    if (hintSlot) drawSlotHint(hintSlot, hintKey, rect);
+    if (!busy && !dragging) renderPile();
+  });
+}
+
+/* 进度条 */
+
+function buildSequence() {
+  sequence.replaceChildren(...Array.from({ length: SLOT_N }, () => {
+    const cell = document.createElement("span");
+    cell.className = "seq-cell";
+    return cell;
+  }));
+}
+
+function updateSequence() {
+  [...sequence.children].forEach((cell, n) => {
+    cell.className = n < order.length ? "seq-cell on " + order[n].key : "seq-cell";
+  });
+}
+
+function setBusyState(on) {
+  busy = on;
+  document.body.classList.toggle("is-busy", on);
+}
+
+function rejectBoard() {
+  boardEl.classList.remove("reject");
+  void boardEl.offsetWidth;
+  boardEl.classList.add("reject");
+  boardEl.addEventListener("animationend", () => boardEl.classList.remove("reject"), { once: true });
+}
+
+/* 画卷与结局 */
+
 let unfurlAbort = null;
+let leavingForEnd = false;
+let endTimer = 0;
+
 function endUnfurlListen() {
   if (unfurlAbort) unfurlAbort.abort();
   unfurlAbort = null;
 }
 
-let leavingForEnd = false;
-let endTimer = 0;
 function goEnding() {
   if (leavingForEnd) return;
   leavingForEnd = true;
   endUnfurlListen();
   window.clearTimeout(endTimer);
-  const n = order.filter(item => item.key === "yuandian").length;
-  const href = "ending.html?tier=" + encodeURIComponent(endingFor(n).tier) + "&open=1";
-  const wrap = document.querySelector(".wrap");
-  if (!motionOk() || !wrap) {
+  const href = "ending.html?tier=" + encodeURIComponent(endingTier(countYuandian(), SLOT_N)) + "&open=1";
+  if (!motionOk()) {
     location.href = href;
     return;
   }
   document.documentElement.classList.add("leaving");
-  const finds = document.getElementById("finds");
-  const veil = document.getElementById("veil");
   veil.style.transition = "none";
   gsap.set(wrap, { transformOrigin: "left center" });
   gsap.timeline({ onComplete: () => { location.href = href; } })
@@ -1148,15 +1047,14 @@ function closeScroll() {
   }
   endUnfurlListen();
   setBusyState(false);
-  pendingTier = null;
-  const finds = document.getElementById("finds");
   finds.replaceChildren();
   finds.className = "scroll";
-  document.getElementById("veil").classList.remove("on");
+  veil.classList.remove("on");
+  scheduleLayout();
 }
 
 function reveal(beat, key) {
-  const finds = document.getElementById("finds");
+  revealTimer = 0;
   finds.className = "scroll";
   const piece = document.createElement("div");
   piece.className = "scroll-piece";
@@ -1168,8 +1066,11 @@ function reveal(beat, key) {
   sheet.appendChild(img);
   const left = document.createElement("i");
   left.className = "roll roll-l";
+  const track = document.createElement("span");
+  track.className = "roll-track";
   const right = document.createElement("i");
   right.className = "roll roll-r";
+  track.appendChild(right);
   const shut = document.createElement("button");
   shut.type = "button";
   shut.className = "shut";
@@ -1177,9 +1078,8 @@ function reveal(beat, key) {
   shut.setAttribute("aria-label", "关闭");
   shut.textContent = "×";
   shut.addEventListener("click", closeScroll);
-  piece.append(left, sheet, right, shut);
+  piece.append(left, sheet, track, shut);
   finds.replaceChildren(piece);
-  const veil = document.getElementById("veil");
   veil.classList.add("on");
   endUnfurlListen();
   unfurlAbort = new AbortController();
@@ -1204,7 +1104,8 @@ function reveal(beat, key) {
     holding = false;
     finish();
   };
-  const skip = (e) => {
+  // 展开途中按下就直接铺满，松手后再出现关闭按钮，避免同一下点到它。
+  const skip = e => {
     if (settled || holding || !finds.contains(piece)) return;
     if (e.button != null && e.button !== 0) return;
     finds.classList.add("open");
@@ -1212,267 +1113,264 @@ function reveal(beat, key) {
     window.addEventListener("pointerup", release);
     window.addEventListener("pointercancel", release);
   };
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) finish();
-  else {
-    sheet.addEventListener("animationend", finish, { once: true });
-    settleTimer = window.setTimeout(finish, 3200);
-    veil.addEventListener("pointerdown", skip, { signal: unfurlAbort.signal });
+  if (reduceMotion.matches) {
+    finish();
+    return;
   }
+  sheet.addEventListener("animationend", finish, { once: true });
+  settleTimer = window.setTimeout(finish, 3200);
+  veil.addEventListener("pointerdown", skip, { signal: unfurlAbort.signal });
 }
 
-function put(i, piece, seat) {
-  if (busy || !isSlot(i) || i !== piece.slot || filled[i] || piece.placed || order.length >= SLOT_N) return;
+/* 放上 / 取下 */
+
+function put(slot, piece, seat) {
+  if (busy || !isSlot(slot) || slot !== piece.slot || filled[slot] || piece.placed) return;
   piece.placed = true;
-  piece.ox = 0;
-  piece.oy = 0;
-  filled[i] = piece.key;
-  order.push({ slot: i, key: piece.key });
+  filled[slot] = piece.key;
+  order.push({ slot, key: piece.key });
   held = null;
   setBusyState(true);
-  paint(i, piece.key, seat);
-  renderPile();
-  updateSequence();
   const beat = order.length - 1;
   const key = piece.key;
-  if (order.length === SLOT_N) {
-    pendingTier = endingFor(order.filter(item => item.key === "yuandian").length).tier;
-    prefetchEnding(pendingTier);
-  }
-  window.setTimeout(() => reveal(beat, key), 1100);
+  // 吸附动画期间先把这一幕下载好，画卷展开时不留白。
+  new Image().src = stillURL(beat, key);
+  paint(slot, key, seat);
+  renderPile();
+  updateSequence();
+  hover(0);
+  if (order.length === SLOT_N) prefetchEnding(endingTier(countYuandian(), SLOT_N));
+  revealTimer = window.setTimeout(() => reveal(beat, key), REVEAL_DELAY);
 }
 
-let hovered = 0;
-function clearPart(i) {
-  const el = partEls[i];
-  el.dataset.state = "empty";
-  delete el.dataset.fill;
-  el.style.backgroundImage = "none";
-  el.style.backgroundSize = "100% 100%";
-  el.style.backgroundPosition = "0px 0px";
-  el.classList.remove("tex-yuandian", "tex-nuolan", "landed");
-  if (window.gsap) {
-    gsap.killTweensOf(el);
-    gsap.set(el, { clearProps: "transform" });
-  }
-  el.style.willChange = "auto";
-  paintSeams();
-}
-
-function take(i) {
-  if (busy || !filled[i]) return;
-  const piece = shards.find(s => s.slot === i && s.placed);
+function take(slot) {
+  if (busy || !filled[slot]) return;
+  const piece = shards.find(s => s.slot === slot && s.placed);
   if (!piece) return;
   piece.placed = false;
-  piece.ox = 0;
-  piece.oy = 0;
-  delete filled[i];
-  const at = order.findIndex(item => item.slot === i);
+  delete filled[slot];
+  const at = order.findIndex(item => item.slot === slot);
   if (at >= 0) order.splice(at, 1);
   held = null;
-  clearPart(i);
+  clearPart(slot);
+  paintSeams();
   renderPile();
   updateSequence();
 }
 
+/* 棋盘悬停：只有结果变化才改 class */
+
 function hover(i) {
-  if (hovered && partEls[hovered]) partEls[hovered].classList.remove("hover");
-  const piece = held == null ? null : shards.find(s => s.id === held);
-  if (piece) hovered = i === piece.slot && !filled[i] ? i : 0;
-  else hovered = isSlot(i) && filled[i] ? i : 0;
-  if (hovered) partEls[hovered].classList.add("hover");
+  let next = 0;
+  if (held) next = i === held.slot && !filled[i] ? i : 0;
+  else next = isSlot(i) && filled[i] ? i : 0;
+  if (next !== hovered) {
+    if (hovered) partEls[hovered].classList.remove("hover");
+    hovered = next;
+    if (hovered) partEls[hovered].classList.add("hover");
+  }
   syncStageHint(i);
 }
 
 function syncStageHint(i) {
-  stage.classList.remove("target-ok", "target-no", "can-lift");
-  if (busy) return;
-  const piece = held == null ? null : shards.find(s => s.id === held);
-  if (piece) {
-    if (i === piece.slot && !filled[i]) stage.classList.add("target-ok");
-    else if (isSlot(i)) stage.classList.add("target-no");
-  } else if (isSlot(i) && filled[i]) {
-    stage.classList.add("can-lift");
+  let mode = "";
+  if (!busy) {
+    if (held) mode = i === held.slot && !filled[i] ? "target-ok" : isSlot(i) ? "target-no" : "";
+    else if (isSlot(i) && filled[i]) mode = "can-lift";
   }
+  if (mode === stageMode) return;
+  if (stageMode) stage.classList.remove(stageMode);
+  stageMode = mode;
+  if (mode) stage.classList.add(mode);
 }
 
 stage.addEventListener("mousemove", e => {
-  if (busy) { hover(0); return; }
-  hover(regionAt(e.clientX, e.clientY));
+  hover(busy ? 0 : regionAt(e.clientX, e.clientY));
 });
 stage.addEventListener("mouseleave", () => hover(0));
 stage.addEventListener("click", e => {
   if (busy) return;
   const i = regionAt(e.clientX, e.clientY);
-  if (held == null) {
-    if (filled[i]) take(i);
-    return;
-  }
-  const piece = shards.find(s => s.id === held);
-  if (piece) put(i, piece);
+  if (held) put(i, held);
+  else if (filled[i]) take(i);
 });
 
-// 残片是不规则形状：点到透明处要落到下面那块。
-function solidAt(btn, clientX, clientY) {
-  const canvas = btn.firstElementChild;
-  if (!canvas || !canvas.getContext) return true;
+/* 拖动 */
+
+// 残片是不规则形状：点到空白处要落到下面那块。
+function solidAt(piece, clientX, clientY) {
+  const btn = piece.el;
+  const w = btn.offsetWidth;
+  const h = btn.offsetHeight;
+  if (!w || !h) return false;
   const r = btn.getBoundingClientRect();
-  const cx = r.left + r.width / 2;
-  const cy = r.top + r.height / 2;
-  const piece = shards.find(s => String(s.id) === btn.dataset.id);
-  const rad = -((piece && held !== piece.id ? piece.rot : 0) * Math.PI) / 180;
-  const dx = clientX - cx;
-  const dy = clientY - cy;
-  const lx = dx * Math.cos(rad) - dy * Math.sin(rad) + btn.offsetWidth / 2;
-  const ly = dx * Math.sin(rad) + dy * Math.cos(rad) + btn.offsetHeight / 2;
-  if (lx < 0 || ly < 0 || lx >= btn.offsetWidth || ly >= btn.offsetHeight) return false;
-  const px = Math.floor(lx / btn.offsetWidth * canvas.width);
-  const py = Math.floor(ly / btn.offsetHeight * canvas.height);
-  try {
-    return canvas.getContext("2d").getImageData(px, py, 1, 1).data[3] > 24;
-  } catch (err) {
-    return true;
-  }
-}
-
-// 不规则块的外接框中心常落在别的区，所以按块本身离槽位多近来吸附。
-function snapSlot(piece, centerX, centerY) {
-  if (filled[piece.slot]) return 0;
-  const r = stage.getBoundingClientRect();
-  const k = r.width / NATURAL.w;
+  const rad = -((held === piece ? 0 : piece.rot) * Math.PI) / 180;
+  const dx = clientX - (r.left + r.width / 2);
+  const dy = clientY - (r.top + r.height / 2);
+  const lx = dx * Math.cos(rad) - dy * Math.sin(rad) + w / 2;
+  const ly = dx * Math.sin(rad) + dy * Math.cos(rad) + h / 2;
+  if (lx < 0 || ly < 0 || lx >= w || ly >= h) return false;
   const box = BOXES[piece.slot];
-  const sx = r.left + (box.x + box.w / 2) * k;
-  const sy = r.top + (box.y + box.h / 2) * k;
-  const reach = Math.max(36, Math.min(box.w, box.h) * k * 0.3);
-  return Math.hypot(centerX - sx, centerY - sy) <= reach ? piece.slot : 0;
+  return labelAt(box.x + lx / w * box.w, box.y + ly / h * box.h) === piece.slot;
 }
 
-function shardUnder(clientX, clientY) {
-  return allShardEls()
-    .sort((a, b) => Number(b.style.zIndex) - Number(a.style.zIndex))
-    .find(el => solidAt(el, clientX, clientY));
+function shardUnder(clientX, clientY, except) {
+  return shards
+    .filter(p => p !== except && !p.placed && p.el && p.el.isConnected)
+    .sort((a, b) => b.z - a.z)
+    .find(p => solidAt(p, clientX, clientY));
 }
 
 function bindShard(btn, piece) {
   let start = null;
-    btn.dataset.id = String(piece.id);
-    btn.dataset.slot = String(piece.slot);
-    btn.dataset.key = piece.key;
+  let frame = 0;
+  let lastX = 0;
+  let lastY = 0;
+
+  // 放大到棋盘比例后，按住的那一点仍留在指针下；返回相对正确位置的偏移。
+  const place = (clientX, clientY) => {
+    const rect = stageRect();
+    const k = scaleOf(rect);
+    const box = BOXES[piece.slot];
+    const cx = clientX - (start.fx - 0.5) * box.w * k;
+    const cy = clientY - (start.fy - 0.5) * box.h * k;
+    btn.style.left = (cx - piece.dw / 2) + "px";
+    btn.style.top = (cy - piece.dh / 2) + "px";
+    return {
+      ox: (cx - rect.left) / k - (box.x + box.w / 2),
+      oy: (cy - rect.top) / k - (box.y + box.h / 2)
+    };
+  };
+
+  const tick = () => {
+    frame = 0;
+    if (!start || !start.floated) return;
+    const off = place(lastX, lastY);
+    if (filled[piece.slot] || coverRatio(piece, off) < SEAT_RATIO) hideSlotHint();
+    else showSlotHint(piece.slot, piece.key);
+  };
+
+  const float = () => {
+    start.floated = true;
+    dragging = true;
+    document.body.classList.add("dragging");
+    btn.classList.add("dragging");
+    document.body.appendChild(btn);
+    btn.style.position = "fixed";
+    btn.style.zIndex = "14";
+    piece.z = ++zTop;
+    btn.style.transition = "transform .22s var(--ease-out), filter .18s ease";
+    btn.style.transform = "rotate(0deg) scale(" + (scaleOf(stageRect()) / piece.scale) + ")";
+  };
+
   const endDrag = () => {
+    if (frame) window.cancelAnimationFrame(frame);
+    frame = 0;
+    start = null;
+    dragging = false;
     document.body.classList.remove("dragging");
     btn.classList.remove("dragging");
   };
-  // 放大到棋盘比例后，按住的那一点仍留在指针下。
-  const centerAt = (clientX, clientY) => {
-    const k = boardScale();
-    const box = BOXES[piece.slot];
-    return {
-      x: clientX - (start.fx - 0.5) * box.w * k,
-      y: clientY - (start.fy - 0.5) * box.h * k
-    };
-  };
-  const follow = (clientX, clientY) => {
-    const c = centerAt(clientX, clientY);
-    btn.style.left = (c.x - piece.dw / 2) + "px";
-    btn.style.top = (c.y - piece.dh / 2) + "px";
-  };
+
   btn._grab = e => {
     const r = btn.getBoundingClientRect();
     start = {
-      x: e.clientX, y: e.clientY, moved: false, floated: false,
-      fx: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)),
-      fy: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))
+      x: e.clientX,
+      y: e.clientY,
+      moved: false,
+      floated: false,
+      fx: clamp01((e.clientX - r.left) / r.width),
+      fy: clamp01((e.clientY - r.top) / r.height)
     };
     raise(btn, piece);
     btn.setPointerCapture(e.pointerId);
   };
+
   btn.addEventListener("pointerdown", e => {
     if (busy || e.button > 0 || piece.placed) return;
-    if (!solidAt(btn, e.clientX, e.clientY)) {
+    if (!solidAt(piece, e.clientX, e.clientY)) {
       e.preventDefault();
-      const below = shardUnder(e.clientX, e.clientY);
-      if (below && below !== btn && below._grab) below._grab(e);
+      const below = shardUnder(e.clientX, e.clientY, piece);
+      if (below) below.el._grab(e);
       return;
     }
     btn._grab(e);
   });
+
   btn.addEventListener("pointermove", e => {
     if (!start) return;
-    if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 6) start.moved = true;
-    if (!start.moved) return;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    if (!start.moved) {
+      if (Math.hypot(lastX - start.x, lastY - start.y) <= DRAG_THRESHOLD) return;
+      start.moved = true;
+    }
     if (!start.floated) {
-      start.floated = true;
-      document.body.classList.add("dragging");
-      btn.classList.add("dragging");
-      document.body.appendChild(btn);
-      btn.style.position = "fixed";
-      btn.style.zIndex = "14";
-      piece.z = ++zTop;
-      btn.style.transition = "transform .22s var(--ease-out), filter .18s ease";
-      btn.style.transform = "rotate(0deg) scale(" + (boardScale() / piece.scale) + ")";
-      cacheAlpha(btn);
-      follow(e.clientX, e.clientY);
+      float();
+      place(lastX, lastY);
     }
-    if (start.floated) {
-      follow(e.clientX, e.clientY);
-      syncSeatHint(piece, btn);
-    }
+    if (!frame) frame = window.requestAnimationFrame(tick);
   });
+
   btn.addEventListener("pointerup", e => {
     if (!start) return;
-    if (start.floated) follow(e.clientX, e.clientY);
-    const moved = start.moved;
-    const floated = start.floated;
-    const seated = floated && !filled[piece.slot] && coverRatio(btn, piece) >= SEAT_RATIO;
-    const seat = seated ? seatOffset(btn, piece) : null;
-    start = null;
+    const { moved, floated } = start;
+    let seat = null;
+    if (floated) {
+      const off = place(e.clientX, e.clientY);
+      if (!filled[piece.slot] && coverRatio(piece, off) >= SEAT_RATIO) seat = off;
+    }
     endDrag();
     if (!moved) {
       hideSlotHint();
-      held = held === piece.id ? null : piece.id;
+      held = held === piece ? null : piece;
       renderPile();
       syncStageHint(0);
       return;
     }
     hover(0);
-    if (floated) btn.remove();
-    if (seated) put(piece.slot, piece, seat);
-    else {
-      hideSlotHint();
-      if (isSlot(regionAt(e.clientX, e.clientY))) rejectBoard();
-      renderPile();
+    if (seat) {
+      put(piece.slot, piece, seat);
+      return;
     }
+    hideSlotHint();
+    if (isSlot(regionAt(e.clientX, e.clientY))) rejectBoard();
+    renderPile();
   });
+
   btn.addEventListener("pointercancel", () => {
-    start = null;
     endDrag();
     hideSlotHint();
-    if (btn.parentElement === document.body) btn.remove();
     renderPile();
     hover(0);
   });
 }
 
+/* 重开 */
+
 function reset() {
   endUnfurlListen();
+  window.clearTimeout(revealTimer);
+  window.clearTimeout(endTimer);
+  revealTimer = 0;
   order.length = 0;
   Object.keys(filled).forEach(k => delete filled[k]);
   held = null;
   setBusyState(false);
-  pendingTier = null;
-  document.getElementById("veil").classList.remove("on");
-  Array.from({ length: SLOT_N }, (_, k) => k + 1).forEach(clearPart);
-  const finds = document.getElementById("finds");
+  hideSlotHint();
+  veil.classList.remove("on");
   finds.replaceChildren();
   finds.className = "scroll";
+  for (let slot = 1; slot <= SLOT_N; slot++) clearPart(slot);
   scatter();
   renderPile();
   updateSequence();
-  syncStageHint(0);
+  hover(0);
   paintSeams();
 }
 
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && document.getElementById("veil").classList.contains("on")) {
+  if (e.key === "Escape" && veil.classList.contains("on")) {
     e.preventDefault();
     closeScroll();
     return;
@@ -1481,8 +1379,10 @@ document.addEventListener("keydown", e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const tag = document.activeElement && document.activeElement.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA") return;
-  if (!busy) reset();
+  if (!busy && !dragging && !leavingForEnd) reset();
 });
+
+/* 翻页进场；从结局页按「返回」回来时页面可能来自缓存，停在翻走的那一帧，要复原。 */
 
 function consumeOpenFlag() {
   try { sessionStorage.removeItem("open-book"); } catch (err) {}
@@ -1499,8 +1399,7 @@ function openFromBook() {
   const root = document.documentElement;
   consumeOpenFlag();
   if (!root.classList.contains("opening")) return;
-  const wrap = document.querySelector(".wrap");
-  if (!wrap || !motionOk()) {
+  if (!motionOk()) {
     root.classList.remove("opening");
     return;
   }
@@ -1521,58 +1420,37 @@ function openFromBook() {
   });
 }
 
+window.addEventListener("pageshow", e => {
+  if (!e.persisted || !leavingForEnd) return;
+  leavingForEnd = false;
+  document.documentElement.classList.remove("leaving");
+  veil.style.transition = "";
+  if (window.gsap) {
+    gsap.killTweensOf([wrap, finds, veil]);
+    gsap.set([wrap, finds, veil], { clearProps: "transform,transformOrigin,opacity,visibility" });
+  }
+  reset();
+});
+
 function boot() {
   openFromBook();
   buildSequence();
   buildStage();
   scatter();
-  bootDone = true;
   renderPile();
   updateSequence();
-  window.requestAnimationFrame(() => {
-    paintSeams();
-    renderPile();
-  });
-  if (window.CUTS_DATA) {
-    cutsData = window.CUTS_DATA;
-    paintSeams();
-    return;
+  paintSeams();
+  window.addEventListener("resize", scheduleLayout);
+  if (window.ResizeObserver) {
+    const observer = new ResizeObserver(scheduleLayout);
+    [stage, piles.yuandian, piles.nuolan].forEach(el => observer.observe(el));
   }
-  fetch(CUTS_SRC)
-    .then(r => r.json())
-    .then(data => {
-      cutsData = data;
-      paintSeams();
-    })
-    .catch(() => {});
 }
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", boot);
 } else {
   boot();
-}
-
-window.addEventListener("resize", () => {
-  paintSeams();
-  syncSeats();
-  if (!busy && !document.body.classList.contains("dragging")) renderPile();
-});
-if (window.ResizeObserver) {
-  let pileTimer = 0;
-  const pileObserver = new ResizeObserver(() => {
-    paintSeams();
-    syncSeats();
-    if (busy || document.body.classList.contains("dragging")) return;
-    window.clearTimeout(pileTimer);
-    pileTimer = window.setTimeout(() => {
-      if (!busy && !document.body.classList.contains("dragging")) renderPile();
-    }, 80);
-  });
-  Object.values(piles).forEach(pileEl => {
-    pileObserver.observe(pileEl);
-    if (pileEl.parentElement) pileObserver.observe(pileEl.parentElement);
-  });
 }
 </script>
 </body>

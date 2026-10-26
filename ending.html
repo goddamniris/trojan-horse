@@ -135,25 +135,17 @@
     </div>
   </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/endings.js?v=1"></script>
 <script>
-const ENDING_FILE = {
-  intact: "stills/结局_6原典_intact_v3.jpg",
-  seams: "stills/结局_5-4原典_seams_v1.jpg",
-  dissolve: "stills/结局_3原典_dissolve_v1.jpg",
-  broken: "stills/结局_2-1原典_broken_v1.jpg",
-  noise: "stills/结局_0原典_v1.jpg"
-};
-
-const params = new URLSearchParams(location.search);
-const tier = ENDING_FILE[params.get("tier")] ? params.get("tier") : "intact";
 const mural = document.getElementById("mural");
 const sheet = document.getElementById("sheet");
 const shut = document.getElementById("shut");
-mural.src = encodeURI(ENDING_FILE[tier]);
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+mural.src = endingImage(new URLSearchParams(location.search).get("tier"));
 
 function motionOk() {
-  return !!(window.gsap && !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  return !!window.gsap && !reduceMotion.matches;
 }
 
 function consumeOpenFlag() {
@@ -218,8 +210,20 @@ shut.addEventListener("click", () => {
   });
 });
 
+// 按「返回」回到这页时可能来自缓存，停在翻走的那一帧，要复原。
+window.addEventListener("pageshow", e => {
+  if (!e.persisted || !leaving) return;
+  leaving = false;
+  sheet.classList.remove("is-turning");
+  if (window.gsap) {
+    gsap.killTweensOf(sheet);
+    gsap.set(sheet, { clearProps: "transform,transformOrigin" });
+  }
+});
+
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", begin);
 else begin();
+// 图片迟迟解码不完也不要一直停在半翻开的状态。
 window.setTimeout(openFromBook, 900);
 </script>
 </body>

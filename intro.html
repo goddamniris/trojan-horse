@@ -166,7 +166,7 @@
 </main>
 </div>
 <link rel="prefetch" href="index.html" />
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="assets/vendor/gsap.min.js"></script>
 <script>
 const COPY = {
   zh: {
@@ -247,6 +247,17 @@ go.addEventListener("click", (event) => {
     ease: "power2.in",
     onComplete: () => { location.href = href; }
   });
+});
+
+// 按「返回」回到这页时可能来自缓存，停在翻走的那一帧，按钮也失灵，要复原。
+window.addEventListener("pageshow", (event) => {
+  if (!event.persisted || !leaving) return;
+  leaving = false;
+  sheet.classList.remove("is-turning");
+  if (window.gsap) {
+    gsap.killTweensOf(sheet);
+    gsap.set(sheet, { clearProps: "transform" });
+  }
 });
 </script>
 </body>
